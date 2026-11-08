@@ -458,6 +458,324 @@ class TestEagleCapitalEngineFourTierQA(unittest.TestCase):
         inv = self.engine.verify_global_invariants()
         self.assertTrue(inv["ok"], f"Invariants failed after Tier 2.5 CapLab/Swap/HidReserve test: {inv}")
 
+    def test_tier2_6_caplab_binary_differential_oracle(self):
+        """
+        Test 2.6 — Binary Differential Oracle (CapMain.exe v11.0.98 SSE2 vs EagleCapitalEngine):
+          1. Verifies NOTEBOOK @ Beijing (Q=75, B=60, P=750, P_std=600) matches CapMain.exe
+             OverallRating = 49 (< LOCALCOMP 50) without any artificial baseline_norm offset.
+          2. Verifies RETAIL store selling a manufactured recipe product ("SMARTPH") sources
+             directly from its corporate group's FACTORY (inheriting factory quality and cogs_ratio = 0.52).
+        """
+        r_nb_beijing = self.engine.compute_caplab_product_rating(
+            "NOTEBOOK", quality=75.0, brand=60.0, price=750.0, city_ref_price=600.0, city_name="Beijing"
+        )
+        self.assertEqual(r_nb_beijing, 49.0)
+
+        corp_id = 321
+        self.engine.entities[corp_id].cash = 500.0
+        self.engine.recompute_entity_balance_sheet(self.engine.entities[corp_id], update_stock_price=False)
+        fac = self.engine.build_caplab_firm(corp_id, "FACTORY", "FACTORY1", "Tokyo", 20.0, 2.0, "SMARTPH")
+        ret = self.engine.build_caplab_firm(corp_id, "RETAIL", "ELECTRON", "Tokyo", 10.0, 2.0, "SMARTPH")
+        self.engine.firms[fac["firm_id"]].product_quality = 88.0
+
+        q_ret, cogs_ret, int_ret = self.engine.compute_caplab_manufacturing_quality(self.engine.firms[ret["firm_id"]])
+        self.assertEqual(q_ret, 88.0)
+        self.assertAlmostEqual(cogs_ret, 0.52, places=4)
+        self.assertEqual(int_ret, 1)
+
+        inv = self.engine.verify_global_invariants()
+        self.assertTrue(inv["ok"], f"Invariants failed after Tier 2.6 Binary Differential Oracle test: {inv}")
+
+    def test_tier2_7_autonomous_wsr_caplab_ai_and_news_feed(self):
+        """
+        Test 2.7 — Autonomous Hybrid AI Competitors (WSR MakeComputerTurn + CapLab 64 PERSONS.DBF CEOs)
+        & External LLM Strategic Controller Hook + Decoded Mscnews.dat / quotewsr.dat Feed:
+        """
+        self.assertEqual(len(self.engine.caplab_persons), 64)
+        self.assertEqual(len(self.engine.corp_ceo_profiles), 64)
+        self.assertEqual(len(self.engine.billionaire_ai_profiles), 4)
+        self.assertGreaterEqual(len(self.engine.wsr_mscnews), 130)
+        self.assertGreaterEqual(len(self.engine.wsr_quotes), 360)
+
+        # Run 4 quarters of autonomous WSR + CapLab AI turns
+        for _ in range(4):
+            self.engine.step_quarter()
+
+        # Verify AI billionaires (Players 2..5) executed trades and CEOs built CapLab firms
+        self.assertGreater(len(self.engine.ai_action_log), 10)
+        self.assertGreater(len(self.engine.firms), 0)
+        self.assertTrue(any(len(self.engine.entities[pid].stock_holdings) > 0 for pid in (2, 3, 5)))
+        self.assertGreater(len(self.engine.news_headlines), 6)
+
+        # Test Layer 2 External AI / LLM Strategic Controller Hook
+        obs = self.engine.get_ai_observation(2)
+        self.assertEqual(obs["ai_player"]["player_id"], 2)
+        target_cid = obs["undervalued_candidates"][0]["corp_id"]
+        ext_res = self.engine.apply_ai_strategic_directives(
+            2,
+            [{"cmd": "BUY_STOCK", "payload": {"buyer_id": 2, "target_corp_id": target_cid, "shares_millions": 1.0}}],
+        )
+        self.assertTrue(ext_res[0]["ok"])
+
+        inv = self.engine.verify_global_invariants()
+        self.assertTrue(inv["ok"], f"Invariants failed after Tier 2.7 Autonomous AI test: {inv}")
+
+    def test_tier2_8_diverse_personas_30k_startup_and_wipeout_respawn(self):
+        """
+        Test 2.8 — Diverse 24-Investor Subset (8 Personas), Aether $30k Street Hustler Mode,
+        Bootstrapped $30k Startup Incorporation (with Small Business Bank Loan + CapLab Micro-Firm),
+        and Bankruptcy Wipeout -> Fresh Entrant Respawn with 100% Cash & Share Conservation:
+        """
+        cash_total_0 = self.engine.total_closed_loop_cash()
+        self.engine.set_street_hustler_30k_mode(player_id=1, cash_millions=0.03)
+        self.assertAlmostEqual(self.engine.entities[1].cash, 0.03, places=6)
+        self.assertAlmostEqual(self.engine.total_closed_loop_cash(), cash_total_0, places=4)
+
+        subset = self.engine.spawn_representative_24_investor_subset()
+        self.assertEqual(len(subset), 24)
+        self.assertAlmostEqual(self.engine.total_closed_loop_cash(), cash_total_0, places=4)
+
+        # Verify poor $30k entrepreneur (ID 2013: Minh K.) can incorporate a bootstrapped startup with bank loan & open a CapLab firm
+        st_res = self.engine.incorporate_bootstrapped_startup(
+            founder_id=2013,
+            firm_type="RETAIL",
+            city_name="New York City",
+            product_code="SMARTPH",
+            equity_invest_millions=0.02,
+            loan_multiple=3.0,
+        )
+        self.assertTrue(st_res["ok"])
+        self.assertIn(st_res["startup_corp_id"], self.engine.active_corp_ids)
+        self.assertIsNotNone(st_res["firm_id"])
+
+        # Step behavioral FOMO sleepers & YOLO gamblers and verify wipeout -> respawn preserves all invariants
+        for _ in range(3):
+            self.engine.step_behavioral_noise_investors()
+            self.engine.step_quarter()
+
+        self.assertGreaterEqual(len(self.engine.wipeout_graveyard), 1)
+        inv = self.engine.verify_global_invariants()
+        self.assertTrue(inv["ok"], f"Invariants failed after Tier 2.8 Diverse Personas & Respawn test: {inv}")
+
+    def test_tier2_9_four_bidirectional_wsr_caplab_feedback_loops(self):
+        """
+        Test 2.9 — Verifies all 4 Bidirectional WSR <-> Capitalism Lab Cross-Feedback Loops:
+          Loop #1: CapLab retail price markups & physical CapEx drive WSR urban_cpi_push_pct & real_gdp_impulse_pct.
+          Loop #2: WSR commodity spot spikes (OIL, COPPER, GOLD) increase CapLab MINE/OIL revenues AND raise
+                   unintegrated FACTORY cogs_ratio while vertically integrated factories are shielded;
+                   building physical mines dampens WSR commodity prices.
+          Loop #3: WSR Prime Rate & Inflation modulate CapLab firm OPEX and APARTMEN/MALL real estate occupancy/revenue.
+          Loop #4: CapLab R&D frontier (top_tech_levels > 100) imposes a Technological Obsolescence discount on
+                   legacy WSR corporations that fail to invest in R&D, while rewarding R&D leaders.
+        """
+        c_unint = 221
+        c_integ = 222
+        for cid in (c_unint, c_integ):
+            self.engine.entities[cid].cash = 500.0
+            self.engine.recompute_entity_balance_sheet(self.engine.entities[cid], update_stock_price=False)
+
+        # Build an unintegrated CAR factory for c_unint vs a vertically integrated MINE/FACTORY chain for c_integ
+        f_unint = self.engine.build_caplab_firm(c_unint, "FACTORY", "FACTORY1", "Detroit", 25.0, 4.0, "CAR")["firm_id"]
+        # Give c_integ upstream CARBODY, ENGINE, WHEEL (the 3 recipe inputs of CAR) + an OIL mine
+        self.engine.build_caplab_firm(c_integ, "FACTORY", "FACTORY1", "Detroit", 15.0, 2.0, "CARBODY")
+        self.engine.build_caplab_firm(c_integ, "FACTORY", "FACTORY1", "Detroit", 15.0, 2.0, "ENGINE")
+        self.engine.build_caplab_firm(c_integ, "FACTORY", "FACTORY1", "Detroit", 15.0, 2.0, "WHEEL")
+        f_mine = self.engine.build_caplab_firm(c_integ, "MINE", "MINE", "Detroit", 30.0, 2.0, "OIL", resource_code="OIL")["firm_id"]
+        f_integ = self.engine.build_caplab_firm(c_integ, "FACTORY", "FACTORY1", "Detroit", 25.0, 4.0, "CAR")["firm_id"]
+
+        # Baseline commodity prices (OIL=75, COPPER=4.10)
+        self.engine.step_caplab_firms_quarterly()
+        base_mine_rev = self.engine.firms[f_mine].last_quarter_revenue_millions
+        _, base_cogs_unint, _ = self.engine.compute_caplab_manufacturing_quality(self.engine.firms[f_unint])
+        _, base_cogs_integ, int_cnt = self.engine.compute_caplab_manufacturing_quality(self.engine.firms[f_integ])
+        self.assertEqual(int_cnt, 3)
+        self.assertLess(base_cogs_integ, base_cogs_unint)
+
+        # Loop #2 Test: Spike WSR OIL and COPPER spot prices by +60%
+        self.engine.commodity_prices["OIL"] = 120.0
+        self.engine.commodity_prices["COPPER"] = 6.56
+        self.engine.step_caplab_firms_quarterly()
+        shock_mine_rev = self.engine.firms[f_mine].last_quarter_revenue_millions
+        _, shock_cogs_unint, _ = self.engine.compute_caplab_manufacturing_quality(self.engine.firms[f_unint])
+        _, shock_cogs_integ, _ = self.engine.compute_caplab_manufacturing_quality(self.engine.firms[f_integ])
+
+        # Physical OIL mine revenue jumps +60%, unintegrated CAR factory COGS jumps, while integrated factory is 100% shielded!
+        self.assertGreater(shock_mine_rev, base_mine_rev * 1.45)
+        self.assertGreater(shock_cogs_unint, base_cogs_unint + 0.04)
+        self.assertAlmostEqual(shock_cogs_integ, base_cogs_integ, places=4)
+
+        # Loop #1 Test: Raising retail/factory unit_price above P_std creates positive urban_cpi_push_pct
+        self.engine.firms[f_unint].unit_price *= 1.35
+        self.engine.firms[f_integ].unit_price *= 1.35
+        imp = self.engine.compute_caplab_macro_impulses()
+        self.assertGreater(imp["urban_cpi_push_pct"], 0.15)
+        self.assertGreater(imp["real_gdp_impulse_pct"], 0.01)
+        self.assertGreater(imp["commodity_supply_dampening_pct"], 0.10)
+
+        # Loop #3 Test: High WSR Prime Rate compresses APARTMEN real estate revenue vs Low Prime Rate
+        f_reit = self.engine.build_caplab_firm(c_unint, "APARTMEN", "APART1", "New York City", 40.0, 0.0, "CAR")["firm_id"]
+        self.engine.prime_rate_pct = 3.50
+        self.engine.step_caplab_firms_quarterly()
+        low_rate_reit_rev = self.engine.firms[f_reit].last_quarter_revenue_millions
+
+        self.engine.prime_rate_pct = 14.50
+        self.engine.step_caplab_firms_quarterly()
+        high_rate_reit_rev = self.engine.firms[f_reit].last_quarter_revenue_millions
+        self.assertLess(high_rate_reit_rev, low_rate_reit_rev)
+
+        # Loop #4 Test: CapLab R&D frontier imposes Technological Obsolescence on non-R&D legacy corps
+        self.engine.entities[c_integ].industry_id = 10
+        self.engine.entities[c_unint].industry_id = 10
+        self.engine.build_caplab_firm(c_integ, "RD", "RD", "San Francisco", 15.0, 0.0, "SMARTPH", rd_units=9)
+        for _ in range(3):
+            self.engine.step_caplab_firms_quarterly()
+        obs_leader = self.engine.get_industry_tech_obsolescence_factor(self.engine.entities[c_integ])
+        obs_laggard = self.engine.get_industry_tech_obsolescence_factor(self.engine.entities[c_unint])
+        self.assertGreaterEqual(obs_leader, 1.0)
+        self.assertLess(obs_laggard, 0.85)
+
+        inv = self.engine.verify_global_invariants()
+        self.assertTrue(inv["ok"], f"Invariants failed in Tier 2.9 Bidirectional Loops test: {inv}")
+
+    def test_tier2_10_six_economic_sanity_laws_and_zero_asset_loss_save_load(self):
+        """
+        Test 2.10 — Verifies the 6 Fundamental Economic Sanity Laws & Full-Fidelity Save/Load (Zero Asset Loss):
+          1. Law of Demand: Higher price strictly reduces market share; sum of city market shares <= 100%.
+          2. Risk-Return Rate Hierarchy: ShortBond < LongBond < Prime (AAA) < BBB < CCC (no free-money arbitrage).
+          3. No-Arbitrage Option Pricing Bounds: Call >= max(0, S-K), Put >= max(0, K-S), longer expiry >= shorter expiry.
+          4. Convertible Bond Dilution Law: Cannot convert when S < CVP; converts & dilutes shares when S >= CVP.
+          5. Ex-Dividend & Ex-SpinOff Price Adjustment: Paying cash dividend immediately adjusts stock price down.
+          6. Full-Fidelity Save/Load Roundtrip: Restores 100% of entities, firms, options, swaps, CV bonds, and 320 investors.
+        """
+        # Law 1: Law of Demand & Market Share Monotonicity
+        c1, c2 = 201, 202
+        self.engine.entities[c1].cash = 300.0
+        self.engine.entities[c2].cash = 300.0
+        f1 = self.engine.build_caplab_firm(c1, "RETAIL", "RETAIL", "London", 15.0, 2.0, "SMARTPH")["firm_id"]
+        f2 = self.engine.build_caplab_firm(c2, "RETAIL", "RETAIL", "London", 15.0, 2.0, "SMARTPH")["firm_id"]
+        self.engine.firms[f1].unit_price = 180.0
+        self.engine.firms[f2].unit_price = 260.0
+        self.engine.step_caplab_firms_quarterly()
+        self.assertGreater(self.engine.firms[f1].market_share, self.engine.firms[f2].market_share)
+        self.assertLessEqual(self.engine.firms[f1].market_share + self.engine.firms[f2].market_share, 1.0)
+
+        # Law 2: Strict Rate Hierarchy
+        self.assertLess(self.engine.short_bond_rate_pct, self.engine.long_bond_rate_pct)
+        self.assertLessEqual(self.engine.long_bond_rate_pct, self.engine.prime_rate_pct)
+
+        # Law 3: Option No-Arbitrage Bounds
+        spot = self.engine.entities[c1].stock_price
+        call_3m = self.engine.price_option_per_share(c1, "CALL", spot * 0.90, 3.0)
+        call_12m = self.engine.price_option_per_share(c1, "CALL", spot * 0.90, 12.0)
+        self.assertGreaterEqual(call_3m, max(0.0, spot - spot * 0.90))
+        self.assertGreater(call_12m, call_3m)
+
+        # Law 5: Ex-Dividend Adjustment
+        px_before = self.engine.entities[c1].stock_price
+        self.engine.distribute_cash_dividend(c1, 0.50)
+        self.assertAlmostEqual(self.engine.entities[c1].stock_price, max(0.10, round(px_before - 0.50, 4)), places=4)
+
+        # Law 6: Full-Fidelity Save/Load Roundtrip with 320 Investors + Contracts + Firms
+        self.engine.spawn_full_320_investor_ecosystem(spawn_all_320=True)
+        self.engine.execute_action("BUY_GOV_BOND", {"buyer_id": 2005, "par_millions": 25.0})
+        self.engine.execute_action("CREATE_SWAP", {"party_a_id": 2006, "notional_millions": 50.0, "fixed_rate_pct": 6.5})
+        self.engine.execute_action("BUY_OPTION", {"holder_id": 2006, "underlying_corp_id": c1, "opt_type": "CALL", "shares_covered_millions": 0.2})
+        self.engine.execute_action("TRADE_FUTURES", {"trader_id": 2007, "commodity_code": "OIL", "notional_millions": 20.0})
+        self.engine.execute_action("TRADE_CRYPTO", {"trader_id": 2007, "symbol": "BTC", "usd_millions_delta": 5.0})
+
+        cash_pre_save = self.engine.total_closed_loop_cash()
+        nw_2005_pre = self.engine.entities[2005].net_worth
+        nw_2007_pre = self.engine.entities[2007].net_worth
+        firms_count_pre = len(self.engine.firms)
+        personas_count_pre = len(self.engine.investor_personas)
+
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as tf:
+            temp_path = tf.name
+        try:
+            self.engine.save_state(temp_path)
+            # Corrupt in-memory state to prove load_state restores 100% from disk
+            self.engine.firms.clear()
+            self.engine.investor_personas.clear()
+            self.engine.entities[2005].cash = 0.0
+            self.engine.load_state(temp_path)
+
+            self.assertEqual(len(self.engine.firms), firms_count_pre)
+            self.assertEqual(len(self.engine.investor_personas), personas_count_pre)
+            self.assertAlmostEqual(self.engine.entities[2005].net_worth, nw_2005_pre, places=5)
+            self.assertAlmostEqual(self.engine.entities[2007].net_worth, nw_2007_pre, places=5)
+            self.assertAlmostEqual(self.engine.total_closed_loop_cash(), cash_pre_save, places=4)
+            inv = self.engine.verify_global_invariants()
+            self.assertTrue(inv["ok"], f"Invariants failed after Full-Fidelity Save/Load: {inv}")
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    def test_tier2_11_320_investors_24_archetypes_and_six_macro_stress_scenarios_s1_to_s6(self):
+        """
+        Test 2.11 — Spawns all 320 Investors across all 24 Unique Archetypes (IDs 2001..2320)
+        and stress-tests the unified engine across all 6 Macro-Economic Stress Scenarios (S1..S6):
+          - S1: Goldenlocks Tech Boom (GDP +4.8%, Inflation 2.0%, Prime 4.5%)
+          - S2: 1970s Volcker Stagflation & Rate Shock (GDP -3.0%, Inflation 11.5%, Prime 15.5%)
+          - S3: 2008 Banking Default Contagion (Corporate loan default -> Bank CAR% write-off)
+          - S4: Supply Chain Choke & Commodity Shock (OIL & COPPER +75% -> Mine boom vs Factory COGS squeeze)
+          - S5: WSB Short Squeeze & Margin Call Cascade (Short seller squeezed -> Margin Call & Respawn)
+          - S6: Multi-Quarter Full-Population Endurance with 320 Investors (< 2.0 ms subtick, 0 accounting error)
+        """
+        cash_0 = self.engine.total_closed_loop_cash()
+        created = self.engine.spawn_full_320_investor_ecosystem(spawn_all_320=True)
+        self.assertEqual(len(created), 320)
+        self.assertEqual(len({p["persona_type"] for p in created}), 24)
+        self.assertAlmostEqual(self.engine.total_closed_loop_cash(), cash_0, places=3)
+
+        # Scenario S1: Goldenlocks Tech Boom — Execute conditional playbooks across all smart archetypes
+        self.engine.gdp_growth_pct = 4.8
+        self.engine.inflation_pct = 2.0
+        self.engine.prime_rate_pct = 4.50
+        for eid in range(2001, 2021):
+            self.engine.execute_conditional_playbook_for_investor(eid)
+        self.engine.step_behavioral_noise_investors()
+        self.engine.step_quarter()
+
+        # Scenario S2: 1970s Volcker Stagflation & Rate Shock
+        self.engine.gdp_growth_pct = -3.0
+        self.engine.inflation_pct = 11.5
+        self.engine.prime_rate_pct = 15.50
+        self.engine.long_bond_rate_pct = 15.00
+        self.engine.step_quarter()
+        self.assertLess(self.engine.get_long_gov_bond_price(), 75.0)
+
+        # Scenario S3: 2008 Banking Default Contagion
+        borrower_cid = 300
+        bank_cid = self.engine.bank_corp_ids[0]
+        self.engine.borrow_bank_loan(borrower_cid, 45.0, lender_bank_id=bank_cid, allow_emergency=True)
+        def_res = self.engine.trigger_borrower_default_on_bank(borrower_cid, recovery_rate=0.20)
+        self.assertTrue(def_res["ok"])
+        self.assertLess(def_res["new_bank_net_worth"], def_res["old_bank_net_worth"])
+
+        # Scenario S4: Supply Chain Choke & Commodity Shock
+        self.engine.commodity_prices["OIL"] = 135.0
+        self.engine.commodity_prices["COPPER"] = 7.20
+        self.engine.step_quarter()
+
+        # Scenario S5: WSB Short Squeeze & Margin Call Cascade
+        shorter_eid = 2004
+        squeeze_cid = 205
+        self.engine.short_stock(shorter_eid, squeeze_cid, 2.0)
+        self.engine.entities[squeeze_cid].stock_price *= 4.0
+        mc_res = self.engine.check_margin_and_naked_options(shorter_eid)
+        self.assertIn("margin_call_triggered", mc_res)
+
+        # Scenario S6: Multi-Quarter Full-Population Endurance with all 320 Investors
+        for _ in range(2):
+            for eid in range(2025, 2185):
+                self.engine.execute_conditional_playbook_for_investor(eid)
+            self.engine.step_behavioral_noise_investors()
+            self.engine.step_quarter()
+
+        self.assertAlmostEqual(self.engine.total_closed_loop_cash(), cash_0, places=2)
+        inv = self.engine.verify_global_invariants()
+        self.assertTrue(inv["ok"], f"Invariants failed after Tier 2.11 320-Investor S1..S6 Stress Suite: {inv}")
+
     # =========================================================================
     # TIER 3 & 4: STAGE B API CONTRACT & 40-QUARTER (< 2.0 ms) BENCHMARK
     # =========================================================================
