@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EagleCapitalEngine — Unified WSR v10 + Capitalism Lab Workstation</title>
+  <style>
+    :root {
+      --bg-dark: #070b12;
+      --bg-panel: rgba(13, 20, 33, 0.92);
+      --bg-card: rgba(20, 30, 48, 0.88);
+      --border: #1e3250;
+      --amber: #f59e0b;
+      --cyan: #06b6d4;
+      --emerald: #10b981;
+      --rose: #f43f5e;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg-dark);
+      color: var(--text);
+      font-family: "Consolas", "Monaco", "Segoe UI", monospace;
+      font-size: 13px;
+      overflow-x: hidden;
+    }
+    /* WSR v10 Video Header Banner */
+    .hero-header {
+      position: relative;
+      height: 108px;
+      overflow: hidden;
+      border-bottom: 2px solid var(--amber);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+    .hero-video {
+      position: absolute;
+      top: 50%; left: 50%;
+      min-width: 100%; min-height: 100%;
+      transform: translate(-50%, -50%);
+      object-fit: cover;
+      opacity: 0.28;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      width: 100%;
+      justify-content: space-between;
+    }
+    .brand-logos {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .brand-logos img {
+      height: 52px;
+      border-radius: 6px;
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      background: rgba(0, 0, 0, 0.65);
+      padding: 4px;
+    }
+    .title-block h1 {
+      font-size: 18px;
+      color: var(--amber);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .title-block p {
+      color: var(--cyan);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+    /* Macro & Time Bar */
+    .macro-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .metric-pill {
+      background: rgba(7, 11, 18, 0.85);
+      border: 1px solid var(--border);
+      padding: 6px 10px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    .metric-pill .lbl { font-size: 10px; color: var(--muted); display: block; }
+    .metric-pill .val { font-size: 14px; font-weight: bold; color: var(--emerald); }
+    .metric-pill .val.amber { color: var(--amber); }
+    .metric-pill .val.cyan { color: var(--cyan); }
+    /* Ticker Tape */
+    .ticker-wrap {
+      background: #03060a;
+      border-bottom: 1px solid var(--border);
+      padding: 6px 14px;
+      white-space: nowrap;
+      overflow-x: auto;
+      color: var(--amber);
+      font-size: 12px;
+    }
+    .ticker-item {
+      display: inline-block;
+      margin-right: 22px;
+    }
+    /* Navigation & Controls */
+    .top-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: #0b111e;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tab-btn {
+      background: var(--bg-card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 7px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+    }
+    .tab-btn.active {
+      background: var(--amber);
+      color: #000;
+      border-color: var(--amber);
+    }
+    .sim-btns { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .btn {
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid var(--cyan);
+      padding: 6px 11px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    .btn:hover { background: var(--cyan); color: #000; }
+    .btn.green { border-color: var(--emerald); }
+    .btn.green:hover { background: var(--emerald); color: #000; }
+    .btn.amber { border-color: var(--amber); }
+    .btn.amber:hover { background: var(--amber); color: #000; }
+    .btn.rose { border-color: var(--rose); }
+    .btn.rose:hover { background: var(--rose); color: #fff; }
+    /* Main Grid */
+    .workspace { padding: 16px 20px; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 340px 1fr 370px;
+      gap: 14px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .panel {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .panel h2 {
+      font-size: 13px;
+      color: var(--amber);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td {
+      padding: 5px 6px;
+      border-bottom: 1px solid rgba(30, 50, 80, 0.55);
+      text-align: left;
+    }
+    th { color: var(--cyan); font-size: 11px; text-transform: uppercase; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.clickable:hover { background: rgba(6, 182, 212, 0.14); cursor: pointer; }
+    .form-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .form-row label { width: 105px; color: var(--muted); font-size: 11px; }
+    input, select {
+      background: #060a12;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 5px 8px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 12px;
+      flex: 1;
+    }
+    /* CapLab Firm Cards with Authentic Sprites */
+    .firms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+      gap: 12px;
+    }
+    .firm-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .firm-sprite {
+      width: 78px;
+      height: 78px;
+      object-fit: contain;
+      background: #050811;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px;
+    }
+    .firm-info { flex: 1; font-size: 11px; line-height: 1.45; }
+    .firm-info h3 { color: var(--cyan); font-size: 13px; margin-bottom: 2px; }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: bold;
+      background: #1e293b;
+      color: var(--amber);
+    }
+    .badge.ok { background: rgba(16, 185, 129, 0.2); color: var(--emerald); border: 1px solid var(--emerald); }
+    .status-toast {
+      padding: 6px 12px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--emerald);
+      color: var(--emerald);
+      font-size: 12px;
+    }
+    .scroll-box { max-height: 430px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <!-- WSR v10 + Capitalism Lab Unified Hero Header -->
+  <header class="hero-header">
+    <video class="hero-video" autoplay muted loop playsinline>
+      <source src="/assets/wsr10/manhattan-financial-district-at-dusk-aerial-shot-SBV-347583472-HD.mp4" type="video/mp4" />
+    </video>
+    <div class="hero-content">
+      <div class="brand-logos">
+        <img src="/assets/wsr10/wallstreetraider_logo.png" alt="Wall Street Raider v10" onerror="this.style.display='none'" />
+        <img src="/assets/caplab/image/caplab_banner.png" alt="Capitalism Lab" onerror="this.style.display='none'" />
+        <div class="title-block">
+          <h1>EagleCapitalEngine — Unified Workstation</h1>
+          <p>Wall Street Raider v10 (5-Regime Macro/M&amp;A/Derivatives) &times; Capitalism Lab v11 (135 Products, 99 Recipes, 64 AI CEOs)</p>
+        </div>
+      </div>
+      <div class="macro-bar">
+        <div class="metric-pill"><span class="lbl">DATE / QTR</span><span class="val amber" id="hdr-date">2026-Q1</span></div>
+        <div class="metric-pill"><span class="lbl">GDP GROWTH</span><span class="val" id="hdr-gdp">2.8%</span></div>
+        <div class="metric-pill"><span class="lbl">PRIME RATE</span><span class="val cyan" id="hdr-prime">6.50%</span></div>
+        <div class="metric-pill"><span class="lbl">AETHER NET WORTH</span><span class="val" id="hdr-nw">$1,000.0M</span></div>
+        <div class="metric-pill"><span class="lbl">5-REGIME AUDIT</span><span class="val" id="hdr-inv">PASS (0.00)</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Live Bloomberg / WSR Ticker Tape -->
+  <div class="ticker-wrap" id="ticker-tape">Loading live market ticker tape...</div>
+
+  <!-- Navigation & Simulation Clock Controls -->
+  <div class="top-controls">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-wsr', this)">1. WSR Financial Terminal &amp; 5-Regime Balance Sheet</button>
+      <button class="tab-btn" onclick="switchTab('tab-caplab', this)">2. Capitalism Lab Supply Chain &amp; Urban Firms</button>
+      <button class="tab-btn" onclick="switchTab('tab-ai', this)">3. AI Billionaires (WSR) &amp; 64 CEOs (PERSONS.DBF)</button>
+      <button class="tab-btn" onclick="switchTab('tab-news', this)">4. Mscnews.dat Wire &amp; 4-Tier QA Telemetry</button>
+    </div>
+    <div class="sim-btns">
+      <span id="action-status" class="status-toast">Ready</span>
+      <button class="btn" onclick="sendAction('STEP_SUBTICK', {})">+1 Subtick (&lt;0.2ms)</button>
+      <button class="btn cyan" onclick="sendAction('STEP_DAY', {})">+1 Day</button>
+      <button class="btn amber" onclick="sendAction('STEP_QUARTER', {})">+1 Quarter (Full WSR+CapLab+AI)</button>
+      <button class="btn green" onclick="sendAction('AI_TURN', {})">Force AI Turn</button>
+    </div>
+  </div>
+
+  <div class="workspace">
+    <!-- TAB 1: WSR FINANCIAL TERMINAL & 5-REGIME BALANCE SHEET -->
+    <div id="tab-wsr" class="tab-pane active">
+      <div class="grid-3">
+        <!-- Left: Corporation & Entity Finder -->
+        <div class="panel">
+          <h2>
+            <span>Entity / Corporation Directory</span>
+            <span class="badge" id="corp-count">1,078 Active</span>
+          </h2>
+          <div class="form-row">
+            <input type="text" id="corp-search" placeholder="Filter ticker or name (e.g. AAPL, BANK, 321)..." oninput="refreshState()" />
+            <button class="btn" onclick="selectEntity(1)">Aether (#1)</button>
+          </div>
+          <div class="scroll-box">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Ticker</th><th>Regime</th><th class="num">Price</th><th class="num">NetWorth</th><th>RTG</th></tr>
+              </thead>
+              <tbody id="corp-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Center: Active Entity 5-Regime Balance Sheet & Holdings -->
+        <div class="panel">
+          <h2>
+            <span id="bs-title">Active Entity Balance Sheet</span>
+            <span class="badge ok" id="bs-regime">PLAYER_INDIVIDUAL</span>
+          </h2>
+          <table>
+            <tbody id="bs-table-body"></tbody>
+          </table>
+
+          <h2 style="margin-top:14px;"><span>Stock Portfolio &amp; Subsidiary Stakes</span></h2>
+          <div class="scroll-box" style="max-height:175px;">
+            <table>
+              <thead>
+                <tr><th>ID</th><th>Ticker</th><th>Name</th><th class="num">Shares (M)</th><th class="num">Stake %</th><th class="num">Market Val</th></tr>
+              </thead>
+              <tbody id="holdings-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Right: Order Execution Desk (Stocks, Shorts, Loans, M&A, GTA Wallet) -->
+        <div class="panel">
+          <h2><span>Wall Street Execution Desk</span></h2>
+          <div class="form-row">
+            <label>Actor Entity ID</label>
+            <input type="number" id="ord-actor-id" value="1" />
+          </div>
+          <div class="form-row">
+            <label>Target Corp ID</label>
+            <input type="number" id="ord-target-id" value="321" />
+          </div>
+          <div class="form-row">
+            <label>Shares (Millions)</label>
+            <input type="number" id="ord-shares" value="2.0" step="0.5" />
+          </div>
+          <div class="form-row" style="justify-content: space-between;">
+            <button class="btn green" onclick="tradeStock('BUY_STOCK')">Buy Long</button>
+            <button class="btn amber" onclick="tradeStock('SELL_STOCK')">Sell Long</button>
+            <button class="btn rose" onclick="tradeStock('SHORT_STOCK')">Short Sell</button>
+            <button class="btn" onclick="tradeStock('COVER_SHORT')">Cover Short</button>
+          </div>
+
+          <h2 style="margin-top:14px;"><span>Banking, Dividends &amp; M&amp;A Restructuring</span></h2>
+          <div class="form-row">
+            <label>Loan Amount ($M)</label>
+            <input type="number" id="ord-loan-amt" value="50.0" step="10" />
+          </div>
+          <div class="form-row">
+            <button class="btn cyan" onclick="bankAction('BORROW_LOAN')">Borrow Bank Loan</button>
+            <button class="btn" onclick="bankAction('REPAY_LOAN')">Repay Bank Loan</button>
+          </div>
+          <div class="form-row">
+            <label>Dividend ($/sh)</label>
+            <input type="number" id="ord-dps" value="0.50" step="0.1" />
+            <button class="btn amber" onclick="payDividend()">Distribute Dividend</button>
+          </div>
+          <div class="form-row">
+            <button class="btn green" onclick="maAction('SPINOFF_SUB')">Spin-Off Sub (80% Tax-Free)</button>
+            <button class="btn rose" onclick="maAction('LIQUIDATE_SUB')">Liquidate Sub (&ge;80%)</button>
+          </div>
+
+          <h2 style="margin-top:14px;"><span>Stage B — GTA San Andreas Wallet Bridge</span></h2>
+          <div class="form-row">
+            <label>GTA Cash ($ USD)</label>
+            <input type="number" id="gta-usd" value="5000000" step="1000000" />
+          </div>
+          <div class="form-row">
+            <button class="btn green" onclick="gtaBridge('DEPOSIT_GTA')">Deposit from GTA Wallet</button>
+            <button class="btn amber" onclick="gtaBridge('WITHDRAW_GTA')">Withdraw to GTA Wallet</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: CAPITALISM LAB SUPPLY CHAIN, FACTORIES, R&D & RETAIL -->
+    <div id="tab-caplab" class="tab-pane">
+      <div class="grid-3">
+        <!-- Left: Build New Capitalism Lab Firm -->
+        <div class="panel">
+          <h2><span>Construct Capitalism Lab Firm</span></h2>
+          <div class="form-row">
+            <label>Owner Corp ID</label>
+            <input type="number" id="cl-owner-id" value="321" />
+          </div>
+          <div class="form-row">
+            <label>Firm Type</label>
+            <select id="cl-firm-type">
+              <option value="FACTORY">FACTORY (Manufacturing Plant)</option>
+              <option value="RETAIL">RETAIL (Urban Retail Store)</option>
+              <option value="RD">RD (R&amp;D Technology Center — 3x3 Synergy)</option>
+              <option value="MINE">MINE (Natural Resource Extraction)</option>
+              <option value="FARM">FARM (Agricultural Crop / Livestock)</option>
+              <option value="APARTMEN">APARTMEN (Residential Real Estate)</option>
+              <option value="OFFICE">OFFICE (Commercial Office Tower)</option>
+              <option value="SOFTWARE">SOFTWARE (Digital Age Studio)</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label>City (128 Cities)</label>
+            <select id="cl-city"></select>
+          </div>
+          <div class="form-row">
+            <label>Product (135)</label>
+            <select id="cl-product"></select>
+          </div>
+          <div class="form-row">
+            <label>CAPEX ($M)</label>
+            <input type="number" id="cl-capex" value="20.0" step="5" />
+          </div>
+          <div class="form-row">
+            <label>Inventory ($M)</label>
+            <input type="number" id="cl-inv" value="4.0" step="1" />
+          </div>
+          <button class="btn green" style="width:100%;margin-top:6px;" onclick="buildCapLabFirm()">
+            Construct Firm (Zero Double-Counting CAPEX Bridge)
+          </button>
+
+          <h2 style="margin-top:16px;"><span>Tune Pricing, Advertising &amp; Brand Mode</span></h2>
+          <div class="form-row">
+            <label>Firm ID</label>
+            <input type="number" id="cl-tune-fid" value="1" />
+          </div>
+          <div class="form-row">
+            <label>Unit Price ($)</label>
+            <input type="number" id="cl-tune-price" value="480" />
+          </div>
+          <div class="form-row">
+            <label>Advertising ($M)</label>
+            <input type="number" id="cl-tune-adv" value="1.5" step="0.25" />
+          </div>
+          <button class="btn cyan" style="width:100%;" onclick="tuneFirmParams()">Update Firm Price &amp; Marketing</button>
+        </div>
+
+        <!-- Center & Right: Active Physical Firms with Authentic CapLab Building Sprites -->
+        <div class="panel" style="grid-column: span 2;">
+          <h2>
+            <span>Active Capitalism Lab Physical Firms (Factories, R&amp;D Labs, Retail, Mines, Real Estate)</span>
+            <span class="badge ok" id="firms-count-badge">0 Firms</span>
+          </h2>
+          <div class="firms-grid" id="caplab-firms-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: AI BILLIONAIRES (WSR MakeComputerTurn) & 64 CAPLAB CEOs (PERSONS.DBF) -->
+    <div id="tab-ai" class="tab-pane">
+      <div class="grid-2">
+        <div class="panel">
+          <h2><span>Billionaire Rivals Leaderboard (WSR MakeComputerTurn + External LLM Hook)</span></h2>
+          <table>
+            <thead>
+              <tr><th>ID</th><th>Billionaire / Fund</th><th class="num">Cash ($M)</th><th class="num">Portfolio</th><th class="num">Shorts</th><th class="num">Net Worth</th><th>Archetype</th></tr>
+            </thead>
+            <tbody id="ai-billionaires-body"></tbody>
+          </table>
+
+          <h2 style="margin-top:16px;"><span>Live Autonomous AI Action Log (WSR 13F Trades &amp; CapLab Expansions)</span></h2>
+          <div class="scroll-box" style="max-height:260px;">
+            <table>
+              <thead>
+                <tr><th>Qtr</th><th>AI Actor</th><th>Engine</th><th>Command</th><th>Details</th></tr>
+              </thead>
+              <tbody id="ai-log-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2><span>Capitalism Lab 64 Executive Personas (Extracted from PERSONS.DBF)</span></h2>
+          <div class="scroll-box" style="max-height:430px;">
+            <table>
+              <thead>
+                <tr><th>Corp</th><th>CEO Name</th><th>Char</th><th class="num">MKT</th><th class="num">R&amp;D</th><th class="num">MFT</th><th class="num">RET</th><th class="num">RAW</th></tr>
+              </thead>
+              <tbody id="caplab-ceos-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: DECODED WSR MSCNEWS.DAT WIRE & 4-TIER INVARIANT TELEMETRY -->
+    <div id="tab-news" class="tab-pane">
+      <div class="grid-2">
+        <div class="panel">
+          <h2><span>Live Financial &amp; Supply Chain News Wire (Mscnews.dat + quotewsr.dat + Live Events)</span></h2>
+          <div class="scroll-box" id="news-feed-box" style="max-height:440px; line-height:1.55;"></div>
+        </div>
+        <div class="panel">
+          <h2><span>4-Tier Anti-Deception &amp; Binary Differential Oracle Telemetry</span></h2>
+          <div id="invariant-box" style="line-height:1.8; font-size:13px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentEntityId = 1;
+    let catalogInitialized = false;
+
+    const FIRM_SPRITE_MAP = {
+      "FACTORY": "/assets/caplab/image/FirmImage/FIRM/COMPUTER1.png",
+      "RETAIL": "/assets/caplab/image/FirmImage/FIRM/CONVENIE1.png",
+      "RD": "/assets/caplab/image/RD_tech.png",
+      "MINE": "/assets/caplab/image/FirmImage/FIRM/AUTO1.png",
+      "FARM": "/assets/caplab/image/FirmImage/FIRM/APPAREL1.png",
+      "APARTMEN": "/assets/caplab/image/FirmImage/FIRM/COFFEESH1.png",
+      "OFFICE": "/assets/caplab/image/FirmImage/FIRM/BANK_HQ1.png",
+      "SOFTWARE": "/assets/caplab/image/RD_product.png"
+    };
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    function selectEntity(id) {
+      currentEntityId = id;
+      document.getElementById('ord-target-id').value = id > 5 ? id : 321;
+      refreshState();
+    }
+
+    async function refreshState() {
+      const q = document.getElementById('corp-search') ? document.getElementById('corp-search').value : '';
+      const res = await fetch(`/api/state?entity_id=${currentEntityId}&q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      renderDashboard(data);
+    }
+
+    async function sendAction(cmd, payload) {
+      const statusEl = document.getElementById('action-status');
+      statusEl.textContent = `Executing ${cmd}...`;
+      const res = await fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cmd, payload, active_entity_id: currentEntityId })
+      });
+      const out = await res.json();
+      if (out.action_result && out.action_result.ok) {
+        statusEl.textContent = `${cmd}: OK`;
+      } else {
+        statusEl.textContent = `${cmd}: ${(out.action_result && out.action_result.reason) || 'Completed'}`;
+      }
+      if (out.state) renderDashboard(out.state);
+    }
+
+    function tradeStock(cmd) {
+      const actor = parseInt(document.getElementById('ord-actor-id').value || '1', 10);
+      const target = parseInt(document.getElementById('ord-target-id').value || '321', 10);
+      const sh = parseFloat(document.getElementById('ord-shares').value || '1.0');
+      sendAction(cmd, { buyer_id: actor, seller_id: actor, shorter_id: actor, target_corp_id: target, shares_millions: sh });
+    }
+
+    function bankAction(cmd) {
+      const actor = parseInt(document.getElementById('ord-actor-id').value || '1', 10);
+      const amt = parseFloat(document.getElementById('ord-loan-amt').value || '50.0');
+      sendAction(cmd, { borrower_id: actor, amount_millions: amt });
+    }
+
+    function payDividend() {
+      const target = parseInt(document.getElementById('ord-target-id').value || '321', 10);
+      const dps = parseFloat(document.getElementById('ord-dps').value || '0.50');
+      sendAction('PAY_DIVIDEND', { payer_corp_id: target, dps });
+    }
+
+    function maAction(cmd) {
+      const parent = parseInt(document.getElementById('ord-actor-id').value || '200', 10);
+      const sub = parseInt(document.getElementById('ord-target-id').value || '201', 10);
+      sendAction(cmd, { parent_corp_id: parent, sub_corp_id: sub });
+    }
+
+    function gtaBridge(cmd) {
+      const usd = parseFloat(document.getElementById('gta-usd').value || '5000000');
+      sendAction(cmd, { amount_usd: usd });
+    }
+
+    function buildCapLabFirm() {
+      const owner = parseInt(document.getElementById('cl-owner-id').value || '321', 10);
+      const ftype = document.getElementById('cl-firm-type').value;
+      const city = document.getElementById('cl-city').value || 'New York City';
+      const prod = document.getElementById('cl-product').value || 'SMARTPH';
+      const capex = parseFloat(document.getElementById('cl-capex').value || '20.0');
+      const inv = parseFloat(document.getElementById('cl-inv').value || '4.0');
+      sendAction('BUILD_FIRM', {
+        owner_corp_id: owner,
+        firm_type: ftype,
+        build_code: ftype,
+        city_name: city,
+        product_code: prod,
+        capex_millions: capex,
+        initial_inventory_millions: inv
+      });
+    }
+
+    function tuneFirmParams() {
+      const fid = parseInt(document.getElementById('cl-tune-fid').value || '1', 10);
+      const px = parseFloat(document.getElementById('cl-tune-price').value || '480');
+      const adv = parseFloat(document.getElementById('cl-tune-adv').value || '1.5');
+      sendAction('SET_FIRM_PARAMS', { firm_id: fid, unit_price: px, advertising_budget_millions: adv });
+    }
+
+    function renderDashboard(data) {
+      const fl = data.floor;
+      const ent = data.active_entity;
+      const inv = data.invariants;
+
+      document.getElementById('hdr-date').textContent = fl.date;
+      document.getElementById('hdr-gdp').textContent = `${fl.gdp_growth_pct}%`;
+      document.getElementById('hdr-prime').textContent = `${fl.prime_rate_pct}%`;
+      document.getElementById('hdr-nw').textContent = `$${fl.player_net_worth_millions.toLocaleString()}M`;
+      document.getElementById('hdr-inv').textContent = inv.ok
+        ? `PASS (Err: ${inv.max_balance_sheet_error.toExponential(1)})`
+        : 'FAIL';
+
+      // Ticker tape
+      const tape = ent.ticker_tape || [];
+      document.getElementById('ticker-tape').innerHTML = tape.map(t => `<span class="ticker-item">&#9650; ${t}</span>`).join('');
+
+      // Populate dropdowns once
+      if (!catalogInitialized && data.cities && data.products) {
+        catalogInitialized = true;
+        const cSel = document.getElementById('cl-city');
+        cSel.innerHTML = data.cities.map(c => `<option value="${c}">${c}</option>`).join('');
+        const pSel = document.getElementById('cl-product');
+        pSel.innerHTML = data.products.map(p => `<option value="${p.code}">${p.code} — ${p.name} ($${p.price})</option>`).join('');
+      }
+
+      // Directory table
+      const cBody = document.getElementById('corp-table-body');
+      cBody.innerHTML = data.corporations.map(c => `
+        <tr class="clickable" onclick="selectEntity(${c.id})">
+          <td>#${c.id}</td>
+          <td><b>${c.ticker}</b></td>
+          <td><span class="badge">${c.regime.replace('_HOLDING','').replace('COMMERCIAL_','')}</span></td>
+          <td class="num">$${c.stock_price.toFixed(2)}</td>
+          <td class="num">$${c.net_worth_millions.toLocaleString()}M</td>
+          <td><b>${c.credit_rating}</b></td>
+        </tr>
+      `).join('');
+
+      // Active Entity Balance Sheet
+      document.getElementById('bs-title').textContent = `#${ent.entity_id} ${ent.name} (${ent.ticker})`;
+      document.getElementById('bs-regime').textContent = `${ent.regime} | Rating: ${ent.credit_rating}`;
+      const rows = [
+        ['Cash & Equivalents', `$${ent.cash_millions.toFixed(2)}M`],
+        ['CapAssets (WSR Abstract + CapLab Firms)', `$${ent.cap_assets_millions.toFixed(2)}M (CapLab: $${(ent.cap_assets_caplab_firms_millions||0).toFixed(2)}M)`],
+        ['Working Capital & CapLab Inventory', `$${ent.working_cap_millions.toFixed(2)}M`],
+        ['Stock & Equity Holdings Portfolio', `$${ent.stock_portfolio_millions.toFixed(2)}M`],
+        ['Government & Corporate Bonds', `$${((ent.gov_bonds_millions||0) + (ent.corp_bonds_millions||0)).toFixed(2)}M`],
+        ['TOTAL ASSETS', `$${ent.total_assets_millions.toFixed(2)}M`],
+        ['Bank Loans & Bonds Outstanding', `$${((ent.bank_loan_millions||0) + (ent.bonds_out_millions||0)).toFixed(2)}M`],
+        ['Short Liability & Naked Options', `$${((ent.short_liability_millions||0) + (ent.naked_option_liab_millions||0)).toFixed(2)}M`],
+        ['Accrued Corporate & Capital Gains Tax', `$${((ent.acc_tax_millions||0) + (ent.cap_tax_millions||0)).toFixed(2)}M`],
+        ['TOTAL LIABILITIES', `$${ent.total_liabilities_millions.toFixed(2)}M`],
+        ['NET WORTH / SHAREHOLDERS EQUITY', `$${ent.net_worth_millions.toFixed(2)}M`],
+        ['Stock Price / Shares Out / Free Float', `$${ent.stock_price.toFixed(2)} | ${ent.shares_outstanding_millions.toFixed(1)}M sh (Float: ${ent.free_float_shares_millions}M)`],
+        ['Brand Mode / Corp Brand / Loyalty', `${ent.brand_strategy} | Brand: ${ent.corporate_brand} | Loyalty: ${ent.brand_loyalty}`]
+      ];
+      document.getElementById('bs-table-body').innerHTML = rows.map(r => `
+        <tr><td>${r[0]}</td><td class="num"><b>${r[1]}</b></td></tr>
+      `).join('');
+
+      // Holdings table
+      const hBody = document.getElementById('holdings-table-body');
+      hBody.innerHTML = (ent.holdings || []).map(h => `
+        <tr class="clickable" onclick="selectEntity(${h.corp_id})">
+          <td>#${h.corp_id}</td>
+          <td><b>${h.ticker}</b></td>
+          <td>${h.name}</td>
+          <td class="num">${h.shares_millions}M</td>
+          <td class="num">${h.pct_owned}%</td>
+          <td class="num">$${h.market_value_millions.toLocaleString()}M</td>
+        </tr>
+      `).join('') || '<tr><td colspan="6" style="color:#94a3b8;">No stock holdings</td></tr>';
+
+      // CapLab Firms Grid
+      const allFirms = data.all_firms || [];
+      document.getElementById('firms-count-badge').textContent = `${allFirms.length} Active Firms`;
+      document.getElementById('caplab-firms-grid').innerHTML = allFirms.map(f => {
+        const sprite = FIRM_SPRITE_MAP[f.firm_type] || FIRM_SPRITE_MAP["FACTORY"];
+        return `
+          <div class="firm-card">
+            <img class="firm-sprite" src="${sprite}" alt="${f.firm_type}" />
+            <div class="firm-info">
+              <h3>#${f.firm_id} ${f.firm_type} — ${f.product || 'REAL ESTATE'}</h3>
+              <div>Owner: <b>${f.owner_ticker} (#${f.owner_corp_id})</b> | City: <b>${f.city}</b></div>
+              <div>Quality: <b>${f.quality}</b> | Brand: <b>${f.brand}</b> | Price: <b>$${f.unit_price}</b></div>
+              <div>Market Share: <span class="badge ok">${f.market_share_pct}%</span> | COGS: <b>${(f.cogs_ratio*100).toFixed(0)}%</b> (Int: ${f.integrated_inputs})</div>
+              <div>Qtr Rev: <b>$${f.last_q_rev_millions}M</b> | Qtr EBIT: <b style="color:#10b981;">$${f.last_q_ebit_millions}M</b></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // AI Billionaires Leaderboard
+      document.getElementById('ai-billionaires-body').innerHTML = (ent.players_leaderboard || []).map(p => `
+        <tr class="clickable" onclick="selectEntity(${p.player_id})">
+          <td>#${p.player_id}</td>
+          <td><b>${p.name}</b></td>
+          <td class="num">$${p.cash_millions.toLocaleString()}M</td>
+          <td class="num">$${p.stock_portfolio_millions.toLocaleString()}M</td>
+          <td class="num">$${p.short_liability_millions.toLocaleString()}M</td>
+          <td class="num"><b>$${p.net_worth_millions.toLocaleString()}M</b></td>
+          <td><span class="badge">${p.ai_profile ? p.ai_profile.archetype : 'HUMAN PLAYER'}</span></td>
+        </tr>
+      `).join('');
+
+      // AI Action Log
+      document.getElementById('ai-log-body').innerHTML = (ent.ai_action_log || []).slice().reverse().map(a => `
+        <tr>
+          <td>${a.year}-Q${a.quarter}</td>
+          <td><b>${a.actor_name}</b></td>
+          <td><span class="badge">${a.source}</span></td>
+          <td><b>${a.cmd}</b></td>
+          <td>${a.target_ticker || a.firm_type || ''} ${a.shares_millions ? a.shares_millions + 'M sh' : ''} ${a.city || ''} ${a.product || ''}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="5">Step +1 Quarter to trigger WSR &amp; CapLab AI moves</td></tr>';
+
+      // CapLab 64 CEOs
+      document.getElementById('caplab-ceos-body').innerHTML = (data.ceo_profiles_sample || []).map(c => `
+        <tr class="clickable" onclick="selectEntity(${c.corp_id})">
+          <td><b>${c.corp_ticker} (#${c.corp_id})</b></td>
+          <td>${c.ceo_name}</td>
+          <td>${c.character}/5</td>
+          <td class="num">${c.marketing}</td>
+          <td class="num">${c.rd}</td>
+          <td class="num">${c.mft}</td>
+          <td class="num">${c.retail}</td>
+          <td class="num">${c.raw}</td>
+        </tr>
+      `).join('');
+
+      // News Feed & Telemetry
+      document.getElementById('news-feed-box').innerHTML = (ent.news_headlines || []).slice().reverse().map(n => `
+        <div style="padding:7px 0; border-bottom:1px solid #1e3250;">&#128240; ${n}</div>
+      `).join('');
+
+      document.getElementById('invariant-box').innerHTML = `
+        <div><b>Global Invariant Status:</b> <span class="badge ok">${inv.ok ? '100% CERTIFIED PASS' : 'VIOLATION'}</span></div>
+        <div><b>Max 5-Regime Balance Sheet Error:</b> <code>${inv.max_balance_sheet_error}</code> (Tolerance &lt; 1e-4)</div>
+        <div><b>Max Share Conservation Error:</b> <code>${inv.max_share_conservation_error}</code> (Long + Float - Short == SharesOut)</div>
+        <div><b>Structural Regime Violations:</b> <code>${inv.structural_violations}</code></div>
+        <div><b>Active Regimes:</b> Players=${inv.active_regime_counts.PLAYER_INDIVIDUAL}, Banks=${inv.active_regime_counts.COMMERCIAL_BANK}, Insurers=${inv.active_regime_counts.INSURANCE_COMPANY}, Industrials=${inv.active_regime_counts.INDUSTRIAL_HOLDING}, ETFs=${inv.active_regime_counts.ETF_FUND}</div>
+      `;
+    }
+
+    refreshState();
+  </script>
+</body>
+</html>
