@@ -85,3 +85,46 @@ Khi hoàn thiện `EagleCapitalEngine`, module này chỉ cần cung cấp một
    - `save_state(slot_path)` / `load_state(slot_path)` / `reset_new_game()`: Gắn 1:1 với 8 slot save của GTA SA (`GTAPEsf1..8.b`).
    - `get_wallstreet_floor_snapshot()`: Cấp dữ liệu cho 5 bảng LED 3D (`EagleWallStreet.asi`) và 8 Nữ Broker AI.
    - `get_workstation_state()` / `execute_action(cmd, payload)`: Cấp dữ liệu và thực thi mọi lệnh giao dịch Phố Wall (WSR) & Quản trị Đế chế (Capitalism Lab) cho `EagleWallStreetHud.lua` và `EaglePhone OS`.
+
+---
+
+## 5. Năm Chế Độ Bảng Cân Đối Kế Toán (`5 Balance Sheet Regimes`) & 7 Cơ Chế Hạch Toán Cốt Tử Của WSR
+
+Dựa trên kết quả giải phẫu nhị phân `WSR.EXE` (`v8.70` & `v10.0.22.3` + `ui.dll` tại [`docs/re_dumps/wsr_architecture_and_qa_guide.md`](docs/re_dumps/wsr_architecture_and_qa_guide.md) và [`docs/re_dumps/supplementary_math_formulas_re.md`](docs/re_dumps/supplementary_math_formulas_re.md)), `EagleCapitalEngine` bắt buộc thực thi đầy đủ **5 chế độ Bảng cân đối kế toán** và **7 quy tắc hạch toán ngầm**:
+
+### 5.1. Năm Chế Độ Bảng Cân Đối Kế Toán (`CorpInfoItems` `@ 0x004266F8` & `ui.dll` `@ 0x10042C54`)
+1. **Chế độ 1 — Tập đoàn Sản xuất / Thương mại / Holding (`IND = 3..70`):**
+   - $\text{Assets} = \text{Cash} + \text{TBills} + \text{WorkingCap} + \text{CapAssets} + \text{StockPortfolio} + \text{OptionPortfolio} + \text{CommodMTM} + \text{CommodMargin} + \text{UnamortizedGoodwill}$
+   - $\text{Liabilities} = \text{BankLoan} + \text{BondsOut (Straight + Convertible)} + \text{ShortLiability} + \text{NakedOptionLiab} + \text{AccTax} + \text{CapTax} + \text{HidReserve}$
+2. **Chế độ 2 — Ngân hàng Thương mại (`IND = 1` — `BankAlloc` `@ 0x0061B266`):**
+   - Không có `CapAssets` hay `WorkingCap`.
+   - $\text{Assets} = \text{Cash} + \text{TBills} + (\text{BizLoans} + \text{ConsumerLoans} + \text{MortgageLoans} - \text{BadDebtReserves}) + \text{GovBonds}_{\text{AdjCost}} + \text{CorpBonds}_{\text{AdjCost}} + \text{StockPortfolio} + \text{AdvancesToCorps}$
+   - $\text{Liabilities} = \text{DemandDeposits (0\%)} + \text{CertDeposits (CDs)} + \text{InterbankDebt (Fed Funds)} + \text{BondsOut} + \text{AccTax} + \text{CapTax} + \text{HidReserve}$
+   - Xếp hạng tín nhiệm (`GetCredRating`): Tính theo **Tỷ lệ An toàn Vốn ($\text{CAR} = \text{NetWorth} / \text{TotalAssets}$)** và tỷ lệ nợ xấu chứ không dùng `D/E`.
+3. **Chế độ 3 — Công ty Bảo hiểm (`IND = 2`):**
+   - Không có `CapAssets` hay `WorkingCap`.
+   - $\text{Assets} = \text{Cash} + \text{TBills} + \text{SubprimeMortgages (MBS)} + \text{GovBonds}_{\text{AdjCost}} + \text{CorpBonds}_{\text{AdjCost}} + \text{StockPortfolio} + \text{OptionPortfolio} + \text{CommodMTM} + \text{CommodMargin}$
+   - $\text{Liabilities} = \text{InsurReserves (Insurance Float)} + \text{BankLoan} + \text{BondsOut} + \text{AccTax} + \text{CapTax} + \text{HidReserve}$
+4. **Chế độ 4 — 20 Quỹ ETF (`IND = 71`, Entity ID `1581..1600`):**
+   - Quản lý bởi `advisorId` thu phí quản lý (`0.2%..2.0%` NAV) + `ETFBonus`.
+   - Trái phiếu (`GovBonds`, `CorpBonds`) trong ETF được định giá theo **Market Value** (khác với Adjusted Cost của Ngân hàng/Bảo hiểm).
+   - Hỗ trợ tự cân bằng đòn bẩy (`AdjustLeverage` cho 2x/3x Bull/Bear ETF), không bán khống cổ phiếu đơn lẻ hay phát hành trái phiếu.
+5. **Chế độ 5 — Người chơi / Nhà đầu tư Cá nhân (`Entity ID 1..5`, `ui.dll` `@ 0x1003EFD6`):**
+   - $\text{Assets} = \text{Cash} + \text{TBills} + \text{AdvancesToCompanies} + \text{GovBonds}_{\text{Mkt}} + \text{CorpBonds}_{\text{Mkt}} + \text{StockPortfolio} + \text{OptionPortfolio} + \text{CommodMTM} + \text{CommodMargin}$
+   - $\text{Liabilities} = \text{BankLoan} + \text{ShortLiability} + \text{NakedOptionLiab} + \text{IncomeTaxOwed} + \text{WealthTaxProjected}$
+
+### 5.2. Bảy Cơ Chế & Quy Tắc Chống Sai Lệch Bắt Buộc
+1. **Sở hữu Chéo Vòng tròn (`CircControl` `@ 0x00480D92` & `CorpControl` `@ 0x0041F811`):** Định giá hội tụ giảm chấn (damped iterative Gauss–Seidel/Jacobi valuation) và phát hiện chu trình kiểm soát để chống bơm thổi `NetWorth` ảo.
+2. **Luật Thuế Doanh nghiệp 3 Tầng (`CorpTaxCalc` `@ 0x004F9803`):**
+   - **DRD (`Dividends Received Deduction`):** Miễn thuế **80%** cổ tức nhận từ công ty con nếu sở hữu $< 80\%$; miễn thuế **100%** nếu sở hữu $\ge 80\%$.
+   - **Ngưỡng `80%` Tax-Free:** `Liquidate` và `SpinOff` công ty con được miễn thuế `CapTax` khi nắm giữ $\ge 80\%$; dưới $80\%$ chịu thuế Capital Gains.
+   - **Chuyển lỗ 4 năm (`LOSS1..LOSS4`):** Lưu lỗ ròng 4 năm gần nhất và tự động khấu trừ vào thu nhập chịu thuế.
+3. **Nghĩa vụ Cổ tức Bán khống (`ShortDividends` `@ 0x005E0721`), `NakedOptionLiab` & `ConvertibleBonds` (`IssueCV` `@ 0x00684901`):**
+   - Người bán khống bị trừ tiền mặt trực tiếp $\Delta \text{Cash} = -\text{ShortShares} \times \text{DPS}$ mỗi khi công ty trả cổ tức; tổng cổ phiếu Long trên thị trường $= \text{SharesOutstanding} + \text{TotalShortShares}$.
+   - Quyền chọn bán khống (`Naked Options`) ghi nhận vào `NakedOptionLiab` và bị cưỡng chế mua đóng (`CheckNakedOptions`) khi vượt hạn mức vay.
+   - Trái phiếu chuyển đổi (`Convertible Bonds`) cho phép đổi sang cổ phiếu mới tại giá `CVP`, pha loãng `SharesOutstanding`.
+4. **Quỹ Dự phòng Ẩn (`HidReserve`) & Chiến tranh Pháp lý:** Hỗ trợ `increaseEarnings`/`decreaseEarnings` qua `HidReserve` và các vụ kiện `antitrustLawsuit`, `harrassingLawsuit`, `greenmail`.
+5. **Chống Hạch toán Kép (`Zero Double-Counting`) tại Cầu nối WSR $\leftrightarrow$ Capitalism Lab:** Khi giải ngân `Cash` xây dựng `Firm` Capitalism Lab, tài sản cố định của `Firm` ánh xạ trực tiếp vào `CapAssets` (`CapAssets = CapAssets_Abstract + CapAssets_CapLabFirms`) và tồn kho ánh xạ vào `WorkingCap`, bảo toàn tuyệt đối $\Delta \text{Cash} + \Delta \text{CapAssets} + \Delta \text{WorkingCap} \equiv 0$ tại thời điểm CAPEX.
+6. **Hoán đổi Lãi suất (`Interest Rate Swaps` — Event `1685`):** Hợp đồng IRS (`Notional`, `FixedRate` vs `FloatingRate` neo theo `PrimeRate`/`LongBondRate`/`ShortBondRate`) thanh toán chênh lệch mỗi quý.
+7. **Khung Kiểm Thử Chống Đánh Lừa 4 Tầng (`4-Tier Anti-Deception QA`):** Kiểm tra bất biến kế toán trên toàn bộ `1,595+` thực thể thuộc cả 5 chế độ, kiểm thử 5 bẫy tài chính đối kháng (Circular Ownership, 3-Tier DRD, Short Dividend & Squeeze, Bank Run & Bad Debt, Zero Double-Counting CAPEX), kiểm thử đối chiếu Oracle, và benchmark 40–80 quý đạt $< 2.0\text{ ms/tick}$.
+
