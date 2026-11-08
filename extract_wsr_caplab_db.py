@@ -238,6 +238,63 @@ def parse_wsr101(path: str, corporations: dict):
                 if not any(pr["parent_id"] == cid for pr in pars):
                     pars.append({"parent_id": cid, "ownership_pct": s["ownership_pct"]})
 
+    # Assign Industry 71 (EXCHANGE-TRADED FUNDS) to Entity IDs 1581..1600 per WSR.EXE ETF setup
+    etf_specs = {
+        1581: ("GOVT_BOND", [], 1.0, 0.25, 2000.0, 37),
+        1582: ("CORP_BOND_IG", [], 1.0, 0.35, 2000.0, 37),
+        1583: ("JUNK_BOND", [], 1.0, 0.50, 1500.0, 37),
+        1584: ("LEVERAGED_BULL", list(range(3, 70)), 2.0, 0.75, 1500.0, 37),
+        1585: ("LEVERAGED_BEAR", list(range(3, 70)), -2.0, 0.75, 1500.0, 37),
+        1586: ("SECTOR_EQUITY", [3, 55, 67, 68], 1.0, 0.40, 1200.0, 1),
+        1587: ("SECTOR_EQUITY", [4, 10, 24, 26, 35, 39, 40, 61], 1.0, 0.45, 2500.0, 37),
+        1588: ("SECTOR_EQUITY", [7, 8, 69], 1.0, 0.40, 1800.0, 1),
+        1589: ("SECTOR_EQUITY", [15, 17, 28, 34], 1.0, 0.40, 1200.0, 1),
+        1590: ("SECTOR_EQUITY", [4, 21, 22, 43, 56], 1.0, 0.45, 1800.0, 2),
+        1591: ("SECTOR_EQUITY", [41, 42, 43, 44, 45, 46, 47, 48], 1.0, 0.40, 1400.0, 1),
+        1592: ("SECTOR_EQUITY", [11, 16, 23, 25, 52, 53], 1.0, 0.40, 1200.0, 1),
+        1593: ("REGIONAL_EQUITY", [10, 24, 35, 68], 1.0, 0.50, 1600.0, 70),
+        1594: ("SECTOR_EQUITY", [6, 9, 12, 13, 14, 20, 49, 54], 1.0, 0.40, 1500.0, 1),
+        1595: ("SECTOR_EQUITY", [1, 2, 37, 70], 1.0, 0.40, 2000.0, 37),
+        1596: ("SECTOR_EQUITY", [18, 19, 31, 32, 33, 58, 60, 66], 1.0, 0.40, 1400.0, 1),
+        1597: ("SECTOR_EQUITY", [5, 59, 63], 1.0, 0.45, 1300.0, 2),
+        1598: ("SECTOR_EQUITY", [27, 29, 30, 36, 57, 62, 65], 1.0, 0.45, 1400.0, 37),
+        1599: ("SECTOR_EQUITY", [7, 9, 33, 50], 1.0, 0.45, 1500.0, 70),
+        1600: ("COMMODITY_FUTURES", [7, 9, 15, 50], 1.0, 0.60, 1200.0, 37),
+    }
+    industries[71] = {
+        "industry_id": 71,
+        "name": "EXCHANGE-TRADED FUNDS (ETFs)",
+        "growth_rate_pct": 0,
+        "volatility_pct": 0,
+        "corporation_ids": list(range(1581, 1601)),
+    }
+    if 70 in industries:
+        industries[70]["corporation_ids"] = [c for c in industries[70]["corporation_ids"] if c < 1581]
+    for etf_id, (etype, t_inds, lev, fee_pct, nav_m, adv_ind) in etf_specs.items():
+        if etf_id in corporations:
+            c = corporations[etf_id]
+            c["industry_id"] = 71
+            c["initial_state"] = {
+                "status": 1,
+                "cash_millions": nav_m,
+                "capital_assets_millions": 0.0,
+                "dividend_payout_pct": 0.0,
+                "bonds_outstanding_millions": 0.0,
+                "bond_maturity_year": None,
+                "bond_coupon_pct": None,
+                "business_assets_pct": 0,
+                "growth_rate_override_pct": 0,
+                "credit_rating_override": None,
+                "mag_factor": None,
+                "etf_type": etype,
+                "target_industries": t_inds,
+                "leverage_factor": lev,
+                "advisory_fee_pct": fee_pct,
+                "preferred_advisor_industry": adv_ind,
+            }
+            c.setdefault("parents", [])
+            c.setdefault("subsidiaries", [])
+
     return industries
 
 
@@ -403,6 +460,7 @@ def build_industry_supply_chain_crosswalk(industries: dict, caplab_tables: dict)
         68: ("MANUFACTURING", ["FACTORY", "RD", "RETAIL"], ["AUTO"], ["AUTO", "SEMI"], ["CAR", "MOTORCYC", "BICYCLE", "ENGINE", "CAR_BODY", "WHEEL_T"], ["AIR_ALU_B", "LITHIUM_B", "GPS_NAV"], ["IRON", "ALUMINIU"]),
         69: ("UTILITIES_ENV", ["OIL", "MINE", "FACTORY"], [], ["RAW"], ["OIL", "COAL"], ["WIND_TURB", "AIR_ALU_B", "LITHIUM_B"], ["COAL", "OIL"]),
         70: ("SECURITIES_HOLDING", ["HQ", "INVEST", "BANK_HQ", "COMMERCI", "MALL"], ["DEPARTME", "DISCOUNT"], ["AUTO", "ELECTRON", "COMPUTER", "FOOD", "BEVERAGE", "APPAREL", "DRUGS"], [], tech_all[:10], [], software_all[:5]),
+        71: ("ETF_FUND", ["INVEST", "STOCK"], [], [], [], [], []),
     }
 
     valid_products = {p["CODE"] for p in caplab_tables["PRODUCT_TYPES"]["rows"]}
@@ -410,7 +468,7 @@ def build_industry_supply_chain_crosswalk(industries: dict, caplab_tables: dict)
     valid_soft = set(software_all)
 
     crosswalk = {}
-    for ind_id in range(1, 71):
+    for ind_id in range(1, 72):
         ind_info = industries.get(ind_id, {"name": f"INDUSTRY_{ind_id}", "growth_rate_pct": 5, "volatility_pct": 5})
         entry_tuple = SPEC[ind_id]
         archetype = entry_tuple[0]
