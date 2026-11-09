@@ -295,7 +295,7 @@ class FinancialEntity:
     straight_bonds_out: float = 0.0
     convertible_bonds_out: float = 0.0
     bond_coupon_pct: float = 6.0
-    bond_maturity_year: int = 2034
+    bond_maturity_year: int = 2018
     short_liability: float = 0.0
     naked_option_liab: float = 0.0
     acc_tax: float = 0.0
@@ -380,7 +380,7 @@ class EagleCapitalEngine:
             self.raw_db = json.load(f)
 
         # Simulation Clock
-        self.year: int = 2026
+        self.year: int = 2010
         self.quarter: int = 1
         self.month: int = 1
         self.day: int = 1
@@ -596,7 +596,7 @@ class EagleCapitalEngine:
             if active:
                 if regime == "COMMERCIAL_BANK":
                     # Regime 2: Commercial Bank — NO CapAssets or WorkingCap!
-                    base_scale = max(500.0, cash_m + cap_m * 4.0)
+                    base_scale = max(500.0, cash_m + cap_m * 4.0 + bonds_m * 5.0)
                     ent.cash = base_scale * 0.12
                     ent.tbills = base_scale * 0.10
                     ent.biz_loans = base_scale * 0.45
@@ -613,7 +613,7 @@ class EagleCapitalEngine:
                     self.bank_corp_ids.append(cid)
                 elif regime == "INSURANCE_COMPANY":
                     # Regime 3: Insurance Company — NO CapAssets or WorkingCap!
-                    base_scale = max(400.0, cash_m + cap_m * 3.0)
+                    base_scale = max(400.0, cash_m + cap_m * 3.0 + bonds_m * 4.5)
                     ent.cash = base_scale * 0.10
                     ent.tbills = base_scale * 0.12
                     ent.subprime_mortgages = base_scale * 0.15
@@ -645,15 +645,25 @@ class EagleCapitalEngine:
                     self.etf_corp_ids.append(cid)
                 else:
                     # Regime 1: Industrial / Commercial / Holding (IND=3..70)
-                    ent.cap_assets_abstract = cap_m
-                    ent.working_cap_abstract = round(cap_m * 0.25, 4)
+                    adj_cap = max(cap_m, bonds_m * 1.45 + 35.0)
+                    ent.cap_assets_abstract = adj_cap
+                    ent.working_cap_abstract = round(adj_cap * 0.25, 4)
+
+                # Seed realistic distinct corporate ROCE, EPS, and initial stock price so no two corps look cloned
+                roce_jitter = ((cid * 37 + ind_id * 13) % 19 - 8) * 0.55
+                ent.roce_pct = round(max(6.5, min(26.0, 12.0 + roce_jitter)), 2)
+                est_nw = max(40.0, cash_m + cap_m * 1.25 - bonds_m)
+                book_ps = est_nw / max(1.0, ent.shares_outstanding)
+                ent.annual_eps = round(max(0.25, book_ps * (ent.roce_pct / 100.0)), 4)
+                val_mult = 0.88 + ((cid * 29) % 23) * 0.022
+                ent.stock_price = round(max(4.50, book_ps * val_mult), 2)
 
                 self.active_corp_ids.append(cid)
                 self.public_float_shares[cid] = ent.shares_outstanding
 
             self.entities[cid] = ent
 
-        # Load initial 263 Cross-Ownership Subsidiary Links from wsr101.dat
+        # Load initial 263 Cross-Ownership Subsidiary Links from wsr101.dat (preserving >=25% public float)
         for cid_str, cdata in self.raw_db["wsr"]["corporations"].items():
             parent_id = int(cid_str)
             parent = self.entities.get(parent_id)
@@ -666,11 +676,11 @@ class EagleCapitalEngine:
                 if sub and sub.is_active and sub_id != parent_id:
                     avail_float = self.public_float_shares.get(sub_id, 0.0)
                     desired_shares = sub.shares_outstanding * (pct / 100.0)
-                    alloc_shares = min(avail_float, desired_shares)
+                    alloc_shares = min(max(0.0, avail_float - 25.0), desired_shares)
                     if alloc_shares > 0:
                         parent.stock_holdings[sub_id] = alloc_shares
                         parent.stock_cost_basis[sub_id] = alloc_shares * sub.stock_price
-                        self.public_float_shares[sub_id] = max(0.0, avail_float - alloc_shares)
+                        self.public_float_shares[sub_id] = max(25.0, avail_float - alloc_shares)
 
         # Allocate initial stock basket to Sector/Equity/Leveraged ETFs so they hold real underlying positions
         for etf_id in self.etf_corp_ids:
@@ -969,6 +979,7 @@ class EagleCapitalEngine:
                 + ent.corp_bonds_mkt_value
                 + ent.commod_mtm
                 + ent.commod_margin
+                + ent.crypto_portfolio_value
                 + ent.unamortized_goodwill
                 + ent.advances_to_subsidiaries
             )
@@ -997,6 +1008,9 @@ class EagleCapitalEngine:
                 + ent.corp_bonds_adj_cost
                 + ent.stock_portfolio_value
                 + ent.option_portfolio_value
+                + ent.commod_mtm
+                + ent.commod_margin
+                + ent.crypto_portfolio_value
                 + ent.advances_to_corps
             )
             ent.total_liabilities = (
@@ -1027,6 +1041,7 @@ class EagleCapitalEngine:
                 + ent.option_portfolio_value
                 + ent.commod_mtm
                 + ent.commod_margin
+                + ent.crypto_portfolio_value
             )
             ent.total_liabilities = (
                 ent.insur_reserves
@@ -1055,6 +1070,7 @@ class EagleCapitalEngine:
                 + ent.option_portfolio_value
                 + ent.commod_mtm
                 + ent.commod_margin
+                + ent.crypto_portfolio_value
             )
             ent.total_liabilities = (
                 ent.bank_loan
@@ -1259,10 +1275,10 @@ class EagleCapitalEngine:
                 self.public_float_shares[cid] = self.entities[cid].shares_outstanding
                 self.recompute_entity_balance_sheet(self.entities[cid], update_stock_price=False)
 
-    def recompute_all_balance_sheets(self) -> None:
+    def recompute_all_balance_sheets(self, update_stock_prices: bool = True) -> None:
         self._revalue_all_options()
         for cid in self.active_corp_ids:
-            self.recompute_entity_balance_sheet(self.entities[cid], update_stock_price=True)
+            self.recompute_entity_balance_sheet(self.entities[cid], update_stock_price=update_stock_prices)
         for pid in self.player_ids:
             if pid in self.entities:
                 self.recompute_entity_balance_sheet(self.entities[pid], update_stock_price=False)
@@ -1337,6 +1353,16 @@ class EagleCapitalEngine:
         float_shares = self.public_float_shares.get(corp_id, 0.0)
         return max(1.0, min(100.0, 100.0 * float_shares / max(1e-6, corp.shares_outstanding)))
 
+    def _recompute_holders_of_corp(self, target_corp_id: int) -> None:
+        """Recomputes balance sheets for all entities holding or shorting target_corp_id after a spot price update."""
+        if any(opt.underlying_corp_id == target_corp_id for opt in self.options.values()):
+            self._revalue_all_options()
+        for ent in self.entities.values():
+            if not ent.is_active:
+                continue
+            if target_corp_id in ent.stock_holdings or target_corp_id in ent.short_positions:
+                self.recompute_entity_balance_sheet(ent, update_stock_price=False)
+
     def buy_stock(
         self, buyer_id: int, target_corp_id: int, shares_millions: float
     ) -> Dict[str, Any]:
@@ -1344,8 +1370,14 @@ class EagleCapitalEngine:
         Executes a stock purchase (WSR BuyStock @ 0x004EF26A) with free-float market impact,
         1% broker commission, and strict Share Conservation & Cash Conservation invariants.
         """
-        buyer = self.entities[buyer_id]
-        target = self.entities[target_corp_id]
+        buyer = self.entities.get(buyer_id)
+        target = self.entities.get(target_corp_id)
+        if not buyer or not buyer.is_active or not target or not target.is_active:
+            return {"ok": False, "reason": "Buyer or target entity is not active."}
+        if target.regime == "PLAYER_INDIVIDUAL":
+            return {"ok": False, "reason": "Cannot buy shares of an Individual Investor (#1..#5, #2001..#2320). Select a Corporation (#11..#1580) or ETF (#1581..#1600)."}
+        if buyer_id == target_corp_id:
+            return {"ok": False, "reason": "Entity cannot Buy Long its own shares (select a different Target Corp ID)."}
         avail_float = self.public_float_shares.get(target_corp_id, 0.0)
         shares_to_buy = min(shares_millions, avail_float)
         if shares_to_buy <= 0.0:
@@ -1377,6 +1409,7 @@ class EagleCapitalEngine:
 
         self.recompute_entity_balance_sheet(target, update_stock_price=False)
         self.recompute_entity_balance_sheet(buyer, update_stock_price=False)
+        self._recompute_holders_of_corp(target_corp_id)
         return {
             "ok": True,
             "shares_bought_millions": shares_to_buy,
@@ -1430,6 +1463,7 @@ class EagleCapitalEngine:
 
         self.recompute_entity_balance_sheet(target, update_stock_price=False)
         self.recompute_entity_balance_sheet(seller, update_stock_price=False)
+        self._recompute_holders_of_corp(target_corp_id)
         return {
             "ok": True,
             "shares_sold_millions": shares_to_sell,
@@ -1452,6 +1486,10 @@ class EagleCapitalEngine:
         if shorter.regime == "ETF_FUND":
             return {"ok": False, "reason": "ETFs cannot short individual stocks"}
         target = self.entities[target_corp_id]
+        if target.regime == "PLAYER_INDIVIDUAL":
+            return {"ok": False, "reason": "Cannot short an Individual Investor (#1..#5, #2001..#2320). Select a Corporation (#11..#1580) or ETF (#1581..#1600)."}
+        if shorter_id == target_corp_id:
+            return {"ok": False, "reason": "Entity cannot short its own shares."}
         if shares_millions <= 0.0:
             return {"ok": False, "reason": "Invalid short share quantity"}
 
@@ -1518,12 +1556,18 @@ class EagleCapitalEngine:
              Cash Conservation is 100% exact: Sum(Delta_Cash_All) + Delta_System_Pool == 0!
         """
         payer = self.entities[payer_corp_id]
-        if dps <= 0.0 or payer.shares_outstanding <= 0.0:
+        if payer.regime in ("PLAYER_INDIVIDUAL", "ETF_FUND") or payer.shares_outstanding <= 0.0:
+            return {"ok": False, "reason": "Select a Corporation (#11..#1580) as Target Corp to distribute dividends"}
+        if dps <= 0.0:
             return {"ok": False, "reason": "Invalid dividend per share"}
 
         base_dividend = dps * payer.shares_outstanding
         if payer.cash < base_dividend:
-            return {"ok": False, "reason": "Insufficient corporate cash for dividend"}
+            if payer.cash >= 0.001:
+                dps = round((payer.cash * 0.20) / payer.shares_outstanding, 5)
+                base_dividend = dps * payer.shares_outstanding
+            if payer.cash < base_dividend or dps <= 0.0:
+                return {"ok": False, "reason": "Insufficient corporate cash for dividend"}
 
         payer.cash -= base_dividend
         payer.dividend_per_share = dps
@@ -2010,6 +2054,16 @@ class EagleCapitalEngine:
         """
         parent = self.entities[parent_corp_id]
         sub = self.entities[sub_corp_id]
+        if parent.regime == "PLAYER_INDIVIDUAL" and parent.ceo_of_corp_ids:
+            for c_id in sorted(parent.ceo_of_corp_ids):
+                if c_id in self.entities and self.entities[c_id].stock_holdings.get(sub_corp_id, 0.0) > 0:
+                    parent_corp_id = c_id
+                    parent = self.entities[parent_corp_id]
+                    break
+        if parent.regime in ("PLAYER_INDIVIDUAL", "ETF_FUND") or parent.shares_outstanding <= 0.0:
+            return {"ok": False, "reason": "Liquidation requires a Parent Corporation (#11..#1580) as Actor"}
+        if parent_corp_id == sub_corp_id:
+            return {"ok": False, "reason": "Corporation cannot liquidate itself"}
         shares_held = parent.stock_holdings.get(sub_corp_id, 0.0)
         ownership_pct = 100.0 * shares_held / max(1e-6, sub.shares_outstanding)
         if ownership_pct < 50.0:
@@ -2176,6 +2230,16 @@ class EagleCapitalEngine:
         """
         parent = self.entities[parent_corp_id]
         sub = self.entities[sub_corp_id]
+        if parent.regime == "PLAYER_INDIVIDUAL" and parent.ceo_of_corp_ids:
+            for c_id in sorted(parent.ceo_of_corp_ids):
+                if c_id in self.entities and self.entities[c_id].stock_holdings.get(sub_corp_id, 0.0) > 0:
+                    parent_corp_id = c_id
+                    parent = self.entities[parent_corp_id]
+                    break
+        if parent.regime in ("PLAYER_INDIVIDUAL", "ETF_FUND") or parent.shares_outstanding <= 0.0:
+            return {"ok": False, "reason": "80% Spin-Off requires a Parent Corporation (#11..#1580) with shareholders as Actor"}
+        if parent_corp_id == sub_corp_id:
+            return {"ok": False, "reason": "Corporation cannot spin off itself"}
         shares_held = parent.stock_holdings.get(sub_corp_id, 0.0)
         ownership_pct = 100.0 * shares_held / max(1e-6, sub.shares_outstanding)
         if shares_held <= 0.0:
@@ -2259,8 +2323,10 @@ class EagleCapitalEngine:
         self, plaintiff_id: int, defendant_id: int, lawsuit_type: str, claim_millions: float
     ) -> Dict[str, Any]:
         """Files an Antitrust or Harassing Lawsuit (WSR Harass Countdown @ 0x00611AF8)."""
+        if plaintiff_id == defendant_id:
+            return {"ok": False, "reason": "Cannot file a lawsuit against yourself (select a different Target Corp ID)"}
         plaintiff = self.entities[plaintiff_id]
-        legal_fee = max(1.0, claim_millions * 0.02)
+        legal_fee = max(0.0001, round(claim_millions * 0.02, 5))
         if plaintiff.cash < legal_fee:
             return {"ok": False, "reason": "Insufficient cash for legal retainer"}
         plaintiff.cash -= legal_fee
@@ -2622,12 +2688,23 @@ class EagleCapitalEngine:
           - Guarantees: Delta_Cash + Delta_CapAssets + Delta_WorkingCap == 0.0 (Delta_NetWorth == 0.0)!
         """
         owner = self.entities[owner_corp_id]
+        if owner.regime == "PLAYER_INDIVIDUAL" and owner.ceo_of_corp_ids:
+            owner_corp_id = sorted(owner.ceo_of_corp_ids)[0]
+            owner = self.entities[owner_corp_id]
+        if owner.regime == "PLAYER_INDIVIDUAL":
+            return {"ok": False, "reason": "Select a Corporation ID (#11..#1580) as Owner Corp ID, or Incorporate a Startup first"}
         if owner.regime in ("COMMERCIAL_BANK", "INSURANCE_COMPANY", "ETF_FUND"):
             return {"ok": False, "reason": f"Regime {owner.regime} cannot own physical CapLab firms directly"}
 
         total_outlay = capex_millions + initial_inventory_millions
         if owner.cash < total_outlay:
-            return {"ok": False, "reason": "Insufficient corporate cash for CAPEX"}
+            if owner.net_worth < 2.0 and owner.cash >= 0.004:
+                # Auto-size micro-firm CAPEX to fit a $30k-$500k startup's cash
+                capex_millions = round(owner.cash * 0.60, 4)
+                initial_inventory_millions = 0.0 if firm_type.upper() in ("RD", "APARTMEN", "COMMERCI", "MALL", "OFFICE", "SOFTWARE") else round(owner.cash * 0.15, 4)
+                total_outlay = capex_millions + initial_inventory_millions
+            else:
+                return {"ok": False, "reason": "Insufficient corporate cash for CAPEX"}
 
         old_nw = owner.net_worth
         owner.cash -= total_outlay
@@ -2649,6 +2726,7 @@ class EagleCapitalEngine:
         base_price = float(self.products.get(norm_prod, {}).get("PRICE", 100.0))
         fid = self.next_firm_id
         self.next_firm_id += 1
+        is_micro = capex_millions < 5.0
         firm = CapLabFirm(
             firm_id=fid,
             owner_corp_id=owner_corp_id,
@@ -2664,6 +2742,8 @@ class EagleCapitalEngine:
             software_code=software_code.upper() if software_code else "",
             product_quality=78.0 if ftype_u in ("MINE", "OIL", "FOREST", "FARM") else 65.0,
             unit_price=base_price,
+            advertising_budget_millions=round(max(0.0005, capex_millions * 0.025), 5) if is_micro else 0.5,
+            monthly_operating_Cost_millions=round(max(0.0002, capex_millions * 0.012), 5) if is_micro else 0.25,
             rd_units=max(1, min(9, int(rd_units))),
         )
         self.firms[fid] = firm
@@ -2672,6 +2752,7 @@ class EagleCapitalEngine:
         return {
             "ok": True,
             "firm_id": fid,
+            "firm_type": ftype_u,
             "city_name": norm_city,
             "product_code": norm_prod,
             "capex_millions": capex_millions,
@@ -3660,12 +3741,12 @@ class EagleCapitalEngine:
         startup.hid_reserve = 0.0
         startup.controlled_by_id = founder_id
 
-        # Transfer founder equity cash -> startup corporate treasury
+        # Transfer founder equity cash -> startup corporate treasury (80% Founder Control + 20% Tradable Float)
         founder.cash -= eq_m
-        founder.stock_holdings[dormant_cid] = 1.0
+        founder.stock_holdings[dormant_cid] = 0.80
         founder.stock_cost_basis[dormant_cid] = eq_m
         founder.ceo_of_corp_ids.add(dormant_cid)
-        self.public_float_shares[dormant_cid] = 0.0
+        self.public_float_shares[dormant_cid] = 0.20
         if dormant_cid not in self.active_corp_ids:
             self.active_corp_ids.append(dormant_cid)
 
@@ -3688,6 +3769,7 @@ class EagleCapitalEngine:
             initial_inventory_millions=inv_m,
             product_code=product_code,
         )
+        self.step_caplab_firms_quarterly()
         self.recompute_entity_balance_sheet(startup, update_stock_price=False)
         self.recompute_entity_balance_sheet(founder, update_stock_price=False)
         return {
@@ -4517,10 +4599,10 @@ class EagleCapitalEngine:
                 "corp_id": cid,
                 "ticker": self.entities[cid].ticker if cid in self.entities else f"C{cid}",
                 "name": self.entities[cid].name if cid in self.entities else f"Corp {cid}",
-                "shares_millions": round(sh, 3),
-                "pct_owned": round(100.0 * sh / max(1e-6, self.entities[cid].shares_outstanding), 2) if cid in self.entities else 0.0,
-                "market_value_millions": round(sh * self.entities[cid].stock_price, 2) if cid in self.entities else 0.0,
-                "cost_basis_millions": round(ent.stock_cost_basis.get(cid, 0.0), 2),
+                "shares_millions": round(sh, 6),
+                "pct_owned": round(100.0 * sh / max(1e-6, self.entities[cid].shares_outstanding), 4) if cid in self.entities else 0.0,
+                "market_value_millions": round(sh * self.entities[cid].stock_price, 6) if cid in self.entities else 0.0,
+                "cost_basis_millions": round(ent.stock_cost_basis.get(cid, 0.0), 6),
             }
             for cid, sh in ent.stock_holdings.items()
             if sh > 0
@@ -4529,8 +4611,8 @@ class EagleCapitalEngine:
             {
                 "corp_id": cid,
                 "ticker": self.entities[cid].ticker if cid in self.entities else f"C{cid}",
-                "shares_millions": round(sh, 3),
-                "liability_millions": round(sh * self.entities[cid].stock_price, 2) if cid in self.entities else 0.0,
+                "shares_millions": round(sh, 6),
+                "liability_millions": round(sh * self.entities[cid].stock_price, 6) if cid in self.entities else 0.0,
             }
             for cid, sh in ent.short_positions.items()
             if sh > 0
@@ -4563,6 +4645,13 @@ class EagleCapitalEngine:
             "cap_assets_caplab_firms_millions": ent.cap_assets_caplab_firms,
             "working_cap_millions": ent.working_cap,
             "stock_portfolio_millions": ent.stock_portfolio_value,
+            "option_portfolio_millions": round(ent.option_portfolio_value, 6),
+            "commod_futures_millions": round(ent.commod_mtm + ent.commod_margin, 6),
+            "crypto_portfolio_millions": round(ent.crypto_portfolio_value, 6),
+            "net_bank_loans_asset_millions": round(ent.net_bank_loans_asset, 4),
+            "subprime_mortgages_millions": round(ent.subprime_mortgages, 4),
+            "deposits_and_interbank_millions": round(ent.demand_deposits + ent.cert_deposits + ent.interbank_debt, 4),
+            "insur_reserves_millions": round(ent.insur_reserves, 4),
             "gov_bonds_millions": ent.gov_bonds_adj_cost if ent.regime in ("COMMERCIAL_BANK", "INSURANCE_COMPANY") else ent.gov_bonds_mkt_value,
             "corp_bonds_millions": ent.corp_bonds_adj_cost if ent.regime in ("COMMERCIAL_BANK", "INSURANCE_COMPANY") else ent.corp_bonds_mkt_value,
             "bank_loan_millions": ent.bank_loan,
@@ -4582,6 +4671,8 @@ class EagleCapitalEngine:
             "shares_outstanding_millions": ent.shares_outstanding,
             "free_float_shares_millions": round(self.public_float_shares.get(ent.entity_id, 0.0), 3),
             "roce_pct": round(ent.roce_pct, 2),
+            "annual_eps": round(ent.annual_eps, 3),
+            "dividend_per_share": round(ent.dividend_per_share, 4),
             "last_quarter_net_income_millions": round(ent.last_quarter_net_income, 3),
             "brand_strategy": ent.brand_strategy,
             "corporate_brand": round(ent.corporate_brand, 1),
@@ -4589,6 +4680,11 @@ class EagleCapitalEngine:
             "controlled_by_id": ent.controlled_by_id,
             "ceo_profile": self.corp_ceo_profiles.get(ent.entity_id) or self.billionaire_ai_profiles.get(ent.entity_id),
             "tech_levels": self.corp_tech_levels.get(ent.entity_id, {}),
+            "crypto_holdings": {k: round(v, 6) for k, v in ent.crypto_holdings.items() if v > 0},
+            "futures_positions": {k: round(v, 4) for k, v in ent.futures_positions.items() if abs(v) > 0},
+            "active_options_count": sum(1 for o in self.options.values() if o.holder_id == ent.entity_id or o.writer_id == ent.entity_id),
+            "active_swaps_count": sum(1 for s in self.swaps.values() if s.party_a_id == ent.entity_id or s.party_b_id == ent.entity_id),
+            "active_lawsuits_count": sum(1 for l in self.lawsuits.values() if l.plaintiff_id == ent.entity_id or l.defendant_id == ent.entity_id),
             "holdings": holdings_detail,
             "shorts": shorts_detail,
             "firms": owned_firms,
@@ -4696,13 +4792,15 @@ class EagleCapitalEngine:
             strike = float(payload.get("strike_price") or round(spot * 1.05, 2))
             holder = int(payload.get("holder_id", 0)) if cmd_u == "BUY_OPTION" else 0
             writer = int(payload.get("writer_id", 0)) if cmd_u == "WRITE_OPTION" else 0
+            opt_t = str(payload.get("opt_type") or payload.get("option_type") or "CALL")
+            sh_cov = float(payload.get("shares_covered_millions") or payload.get("shares_millions") or 0.1)
             return self.create_option_contract(
                 holder_id=holder,
                 writer_id=writer,
                 underlying_corp_id=u_cid,
-                opt_type=str(payload.get("opt_type", "CALL")),
+                opt_type=opt_t,
                 strike_price=strike,
-                shares_covered_millions=float(payload.get("shares_covered_millions", 0.1)),
+                shares_covered_millions=sh_cov,
                 months_to_expiry=float(payload.get("months_to_expiry", 6.0)),
             )
         if cmd_u == "TRADE_FUTURES":
@@ -4712,10 +4810,15 @@ class EagleCapitalEngine:
                 float(payload.get("notional_millions", 10.0)),
             )
         if cmd_u == "TRADE_CRYPTO":
+            usd_delta = float(
+                payload.get("usd_millions_delta")
+                if payload.get("usd_millions_delta") is not None
+                else (payload.get("amount_millions") if payload.get("amount_millions") is not None else payload.get("notional_millions", 5.0))
+            )
             return self.trade_crypto(
                 int(payload.get("trader_id", 1)),
                 str(payload.get("symbol", "BTC")),
-                float(payload.get("usd_millions_delta", 5.0)),
+                usd_delta,
             )
         if cmd_u == "ADVISOR_ETF":
             return self.become_etf_advisor(
@@ -4882,7 +4985,7 @@ class EagleCapitalEngine:
         if "industries" in state:
             self.industries = {int(k): dict(v) for k, v in state["industries"].items()}
 
-        self.recompute_all_balance_sheets()
+        self.recompute_all_balance_sheets(update_stock_prices=False)
         return state
 
     def reset_new_game(self, rng_seed: int = 20261108) -> None:
