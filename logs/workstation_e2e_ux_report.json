@@ -1,0 +1,212 @@
+{
+  "ok": true,
+  "elapsed_seconds": 91.25,
+  "console_errors": [],
+  "page_errors": [],
+  "http_errors": [],
+  "total_e2e_steps_passed": 26,
+  "viewability_audit": {
+    "tab-wsr": {
+      "totalImgs": 52,
+      "brokenImgsCount": 0,
+      "brokenImgs": [],
+      "visibleScrollBoxes": 3,
+      "horizontalOverflows": [],
+      "bodyScrollWidth": 1600,
+      "viewportWidth": 1600
+    },
+    "tab-caplab": {
+      "totalImgs": 52,
+      "brokenImgsCount": 0,
+      "brokenImgs": [],
+      "visibleScrollBoxes": 1,
+      "horizontalOverflows": [],
+      "bodyScrollWidth": 1600,
+      "viewportWidth": 1600
+    },
+    "tab-ai": {
+      "totalImgs": 52,
+      "brokenImgsCount": 0,
+      "brokenImgs": [],
+      "visibleScrollBoxes": 4,
+      "horizontalOverflows": [],
+      "bodyScrollWidth": 1600,
+      "viewportWidth": 1600
+    },
+    "tab-news": {
+      "totalImgs": 52,
+      "brokenImgsCount": 0,
+      "brokenImgs": [],
+      "visibleScrollBoxes": 1,
+      "horizontalOverflows": [],
+      "bodyScrollWidth": 1600,
+      "viewportWidth": 1600
+    }
+  },
+  "action_trace": [
+    {
+      "step": "PhaseA_Init_30k_Hustler_Mode",
+      "status_toast": "World reset with 320 investors",
+      "invariant_badge": "PASS (0.0e+0)",
+      "aether_nw": "$30,000"
+    },
+    {
+      "step": "PhaseA_Directory_Quick_Filters",
+      "status_toast": "World reset with 320 investors",
+      "invariant_badge": "PASS (0.0e+0)",
+      "filters_tested": 4
+    },
+    {
+      "step": "PhaseA_Zero_Negative_NetWorth_And_Distinct_Prices",
+      "status_toast": "World reset with 320 investors",
+      "invariant_badge": "PASS (0.0e+0)",
+      "checked_rows": 100
+    },
+    {
+      "step": "PhaseA_320_Investors_Inspect_Guardrail",
+      "status_toast": "World reset with 320 investors",
+      "invariant_badge": "PASS (0.0e+0)",
+      "kept_target_corp_id": 13
+    },
+    {
+      "step": "PhaseA_Interactive_OHLCV_Chart_And_Candle_Hover_Dissection",
+      "status_toast": "World reset with 320 investors",
+      "invariant_badge": "PASS (0.0e+0)",
+      "hover_sample": "🕯️ Paimon giải phẫu Cây Nến #22/36 [2008-10]: Nến XANH (Phe Mua đẩy giá đóng cửa cao hơn mở cửa) | Mở $147.25 → Đóng $14"
+    },
+    {
+      "step": "PhaseA_Click_Row_AutoSyncs_Target_OrderPreview_And_Full_BalanceSheet",
+      "status_toast": "World reset with 320 investors",
+      "invariant_badge": "PASS (0.0e+0)",
+      "preview": "Target: #13 WFC ($158.03/sh) | Est. Cost: $15,803 ($0.0158M)"
+    },
+    {
+      "step": "PhaseA_MicroLot_100sh_Buy_Long",
+      "status_toast": "BUY_STOCK: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "holdings_badge": "1 LONG / 0 SHORT"
+    },
+    {
+      "step": "PhaseA_Inline_Holdings_Sell_All",
+      "status_toast": "SELL_STOCK: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "holdings_badge": "0 LONG / 0 SHORT"
+    },
+    {
+      "step": "PhaseA_30k_All_MicroLot_Assets_Verified",
+      "status_toast": "REPAY_LOAN: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "status": "ETF, GovBond, CorpBond, Gold, BTC, Call, Swap, Loan all OK"
+    },
+    {
+      "step": "PhaseA_Incorporate_30k_Startup_AutoSync",
+      "status_toast": "Startup #61 (S61) + Firm #10 Created!",
+      "invariant_badge": "PASS (0.0e+0)",
+      "new_startup_id": 61
+    },
+    {
+      "step": "PhaseA_3x3_Floorplan_Slot_Reconfigure",
+      "status_toast": "SET_FIRM_3X3_SLOT: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "slot2_header": "#2 EXTERN\n★Lv4"
+    },
+    {
+      "step": "PhaseA_3x3_Train_All_9_Units",
+      "status_toast": "TRAIN_FIRM_STAFF: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "trained_firm_id": "10"
+    },
+    {
+      "step": "PhaseA_Build_15k_Micro_Store_For_Startup",
+      "status_toast": "Built Firm #11 (FACTORY)!",
+      "invariant_badge": "PASS (0.0e+0)",
+      "owner_id": 61
+    },
+    {
+      "step": "PhaseA_PRQ_AutoSync_And_Price_Tuning",
+      "status_toast": "SET_FIRM_PARAMS: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "tuned_price": 570.0
+    },
+    {
+      "step": "PhaseA_CapLab_FirmType_Icon_Filters",
+      "status_toast": "SET_FIRM_PARAMS: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "categories_tested": 8
+    },
+    {
+      "step": "PhaseB_Stock_Long_Short_Cover",
+      "status_toast": "COVER_SHORT: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "target_corp": 27
+    },
+    {
+      "step": "PhaseB_Bonds_Futures_Crypto_Options_Swaps",
+      "status_toast": "CREATE_SWAP: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "notional_m": 10.0
+    },
+    {
+      "step": "PhaseB_Banking_Dividend_ETF_Lawsuit_GTABridge",
+      "status_toast": "WITHDRAW_GTA: OK",
+      "invariant_badge": "PASS (0.0e+0)"
+    },
+    {
+      "step": "PhaseC_12_Quarters_3Year_Gameplay_And_S1_to_S6",
+      "status_toast": "STEP_QUARTER: OK",
+      "invariant_badge": "PASS (5.7e-14)",
+      "date_after_12q": "2013-Q1 (01/01)"
+    },
+    {
+      "step": "PhaseC_320_Investors_24_Archetypes_And_Wipeout_Feed",
+      "status_toast": "STEP_QUARTER: OK",
+      "invariant_badge": "PASS (5.7e-14)",
+      "cohorts": 24,
+      "hustler_rows": 48
+    },
+    {
+      "step": "PhaseC_Atomic_Save_Reset_Load_Zero_Loss",
+      "status_toast": "Loaded Full-Fidelity State (0.000000 loss)",
+      "invariant_badge": "PASS (5.7e-14)",
+      "restored_date": "2013-Q1 (01/01)",
+      "restored_nw": "$1,000.707M"
+    },
+    {
+      "step": "PhaseD_Paimon_Spotlight_Ring_And_Callout_Verified",
+      "status_toast": "Switched to 30K_HUSTLER",
+      "invariant_badge": "PASS (0.0e+0)",
+      "ring_box": {
+        "x": 11,
+        "y": 59,
+        "width": 1003.828125,
+        "height": 45
+      }
+    },
+    {
+      "step": "PhaseD_Paimon_All_9_Modules_And_36_Quests_Completed",
+      "status_toast": "DEPOSIT_GTA: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "progress_badge": "36 / 36 Quests",
+      "saved_quests": 36
+    },
+    {
+      "step": "PhaseD_Paimon_Inspect_Explain_Mode_Verified",
+      "status_toast": "DEPOSIT_GTA: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "sample_tooltip": "🧚‍♀️ 🕯️ BẢNG NẾN NHẬT OHLCV & KHỐI LƯỢNG (JAPANESE CANDLESTICK CHART)"
+    },
+    {
+      "step": "PhaseD_Paimon_Textbook_Modal_And_Search_Verified",
+      "status_toast": "DEPOSIT_GTA: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "search_tested": "RSI"
+    },
+    {
+      "step": "PhaseD_Paimon_Live_Context_Aware_Chat_Tutor_Verified",
+      "status_toast": "DEPOSIT_GTA: OK",
+      "invariant_badge": "PASS (0.0e+0)",
+      "chat_log_exists": true,
+      "badge": "gpt-6-luna (9244.24ms)"
+    }
+  ]
+}
